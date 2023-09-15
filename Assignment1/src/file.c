@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
         }
     }
     printf("ascii\n");
+    
     fclose(file);
     return 0;
 }

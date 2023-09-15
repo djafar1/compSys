@@ -12,16 +12,26 @@ int main(int argc, char* argv[]) {
     } else {
         printf("file does exists \n");
     }
-    int c = fgetc(file);
-    if (c == EOF){
-        printf("%d \n", c);
+
+    int Char = fgetc(file);
+    if (Char == EOF){
+        printf("%d \n", Char);
         printf("empty\n");
         fclose(file);
         return 0;
     }
-    printf("%d \n", c);
-    putchar(c);
-    putchar(50);
+    ungetc(Char, file);
+    
+    while ((Char = fgetc(file)) != EOF){
+        if (Char < 0 || 127 < Char){
+            printf("This is not an ascii file");
+            fclose(file);
+            return 1;
+        }
+    } 
+    printf("ascii\n");
+     
     fclose(file);
     return 0;
 }
+

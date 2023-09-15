@@ -3,16 +3,25 @@
 #include <string.h> // strerror.
 #include <errno.h>  // errno.
 
-int print_hello_world(void) {
-  return fprintf(stdout, "Hello, world!\n");
-}
-
-int main(void) {
-  int retval = EXIT_SUCCESS;
-
-  if (print_hello_world() <= 0) {
-    retval = EXIT_FAILURE;
-  }
-
-  return retval;
+int main(int argc, char* argv[]) {
+    if (argc != 2)
+        return 1;
+    FILE *file = fopen(argv[1], "r");
+    if (file == NULL){
+        printf("file doesn't exists \n");
+    } else {
+        printf("file does exists \n");
+    }
+    int c = fgetc(file);
+    if (c == EOF){
+        printf("%d \n", c);
+        printf("empty\n");
+        fclose(file);
+        return 0;
+    }
+    printf("%d \n", c);
+    putchar(c);
+    putchar(50);
+    fclose(file);
+    return 0;
 }

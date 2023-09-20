@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     if ((access(argv[1],R_OK)) == 0){
         printf("cannot determine (Permission denied)\n");
         return retval;
-    }
+    } 
 
 
     int Char = fgetc(file);

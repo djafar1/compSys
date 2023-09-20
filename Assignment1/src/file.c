@@ -22,22 +22,22 @@ int main(int argc, char* argv[]) {
     int Char = fgetc(file);
     if (Char == EOF){
         printf("%d \n", Char);
-        printf("empty\n");
+        printf("%s: empty\n", argv[1]);
         fclose(file);
         return retval;
     }
     ungetc(Char, file);
     
     while ((Char = fgetc(file)) != EOF){
-        if (Char < 0 || 127 < Char){
-            printf("This is not an ascii file");
+        if (((Char < 0x07 && Char > 0x0D) || Char == 0x1B || (Char < 0x20 && Char > 0x7E))){
             fclose(file);
             retval = EXIT_FAILURE;
             return retval;
         }
+        else {
+            printf("%s: ASCII text\n", argv[1]);
+        }
     } 
-    printf("ascii\n");
-    //hey
     fclose(file);
     return retval;
 }

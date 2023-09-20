@@ -13,14 +13,13 @@ int main(int argc, char* argv[]) {
     }
 
     if ((access(argv[1],R_OK)) == -1){
-        printf("cannot determine (Permission denied)\n");
+        printf("%s: cannot determine (Permission denied)\n", argv[1]);
         return retval;
     } 
 
     FILE *file = fopen(argv[1], "r");
     if (file == NULL){
-        printf("cannot determine (No such file or directory)\n");
-        fclose(file);
+        printf("%s: cannot determine (No such file or directory)\n", argv[1]);
         return retval;
     }
     else{
@@ -30,8 +29,8 @@ int main(int argc, char* argv[]) {
 
     int Char = fgetc(file);
     if (Char == EOF){
-        printf("%d \n", Char);
-        printf("empty\n");
+        // printf("%d \n", Char);
+        printf("%s: empty\n",argv[1]);
         fclose(file);
         return retval;
     }
@@ -42,6 +41,7 @@ int main(int argc, char* argv[]) {
         if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B || (Char >= 0x20 && Char <= 0x73))) {
             isAscii = 0;
             break;
+        }
     } 
     if (isAscii == 1){
         printf("%s: ASCII text\n", argv[1]);

@@ -11,40 +11,43 @@ int main(int argc, char* argv[]) {
         retval = EXIT_FAILURE;
         return retval;
     }
-    FILE *file = fopen(argv[1], "r");
-    if (file == NULL){
-        printf("cannot determine (No such file or directory)\n");
-        return retval;
-    }
-    else{
-        printf("file exist");
-    }
 
-    if ((access(argv[1],R_OK)) == 0){
+    if ((access(argv[1],R_OK)) == -1){
         printf("cannot determine (Permission denied)\n");
         return retval;
     } 
+
+    FILE *file = fopen(argv[1], "r");
+    if (file == NULL){
+        printf("cannot determine (No such file or directory)\n");
+        fclose(file);
+        return retval;
+    }
+    else{
+        printf("file exist \n");
+    }    
 
 
     int Char = fgetc(file);
     if (Char == EOF){
         printf("%d \n", Char);
-        printf("%s: empty\n", argv[1]);
+        printf("empty\n");
         fclose(file);
         return retval;
     }
     ungetc(Char, file);
     
     while ((Char = fgetc(file)) != EOF){
-        if (((Char < 0x07 && Char > 0x0D) || Char == 0x1B || (Char < 0x20 && Char > 0x7E))){
+        if (Char < 0 || 127 < Char){
+            printf("This is not an ascii file");
             fclose(file);
             retval = EXIT_FAILURE;
             return retval;
         }
-        else {
-            printf("%s: ASCII text\n", argv[1]);
-        }
     } 
+    printf("ascii\n");
+     
     fclose(file);
     return retval;
 }
+

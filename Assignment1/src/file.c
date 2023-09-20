@@ -37,8 +37,7 @@ int main(int argc, char* argv[]) {
         }
     } 
     printf("ascii\n");
-     
+    //hey
     fclose(file);
     return retval;
 }
-

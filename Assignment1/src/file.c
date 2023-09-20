@@ -2,6 +2,7 @@
 #include <stdlib.h> // exit, EXIT_FAILURE, EXIT_SUCCESS.
 #include <string.h> // strerror.
 #include <errno.h>  // errno.
+#include<unistd.h>
 
 int main(int argc, char* argv[]) {
     int retval = EXIT_SUCCESS;
@@ -12,11 +13,17 @@ int main(int argc, char* argv[]) {
     }
     FILE *file = fopen(argv[1], "r");
     if (file == NULL){
-        printf("file doesn't exists \n");
+        printf("cannot determine (No such file or directory)\n");
         return retval;
-    } else {
-        printf("file does exists \n");
     }
+    else{
+        printf("file exist");
+    }
+
+    if ((access(argv[1],R_OK)) == 0){
+        printf("cannot determine (Permission denied)\n");
+        return retval;
+    } 
 
 
     int Char = fgetc(file);
@@ -32,7 +39,6 @@ int main(int argc, char* argv[]) {
         if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B || (Char >= 0x20 && Char <= 0x73))) {
             isAscii = 0;
             break;
-        }
     } 
     if (isAscii == 1){
         printf("%s: ASCII text\n", argv[1]);

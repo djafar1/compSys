@@ -38,5 +38,6 @@ int main(int argc, char* argv[]) {
         printf("%s: ASCII text\n", argv[1]);
     }
     fclose(file);
+    s
     return retval;
 }

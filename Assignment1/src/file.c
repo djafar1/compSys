@@ -38,13 +38,25 @@ int main(int argc, char* argv[]) {
     int isAscii = 1;
     while ((Char = fgetc(file)) != EOF){
 
-        if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B || (Char >= 0x20 && Char <= 0x73))) {
+        if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B || (Char >= 0x20 && Char <= 0x7E))) {
             isAscii = 0;
             break;
         }
     } 
     if (isAscii == 1){
         printf("%s: ASCII text\n", argv[1]);
+    }
+
+    int isISO8851 = 1;
+    while ((Char = fgetc(file)) != EOF){
+
+        if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B ||(Char >= 0x20 && Char <= 0x7E)||(Char >= 0xA0 && Char <= 0xFF))) {
+            isISO8851 = 0;
+            break;
+        }
+    } 
+    if (isISO8851 == 1){
+        printf("%s: ISO-8851 text\n", argv[1]);
     }
 
     fclose(file);

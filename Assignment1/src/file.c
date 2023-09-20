@@ -34,17 +34,16 @@ int main(int argc, char* argv[]) {
         return retval;
     }
     ungetc(Char, file);
-    
+    int isAscii = 1;
     while ((Char = fgetc(file)) != EOF){
-        if (((Char < 0x07 && Char > 0x0D) || Char == 0x1B || (Char < 0x20 && Char > 0x7E))){
-            fclose(file);
-            retval = EXIT_FAILURE;
-            return retval;
-        }
-        else {
-            printf("%s: ASCII text\n", argv[1]);
-        }
+        if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B || (Char >= 0x20 && Char <= 0x73))) {
+            isAscii = 0;
+            break;
     } 
+    if (isAscii == 1){
+        printf("%s: ASCII text\n", argv[1]);
+    }
     fclose(file);
+    s
     return retval;
 }

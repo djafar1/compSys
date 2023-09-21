@@ -65,15 +65,29 @@ int main(int argc, char* argv[]) {
     }
 
     //File type ISO-8851
-    while ((Char = fgetc(file)) != EOF){
-
-        if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B ||
-        (Char >= 0x20 && Char <= 0x7E)||(Char >= 0xA0 && Char <= 0xFF))) {
-            break;
+    if ((Char = fgetc(file)) != EOF){
+        while ((Char = fgetc(file)) != EOF){
+            if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B ||
+            (Char >= 0x20 && Char <= 0x7E)||(Char >= 0xA0 && Char <= 0xFF))) {
+                break;
+            }
+            else{
+                type = ISO8851;
+                break;
+            }
         }
-        else{
-            type = ISO8851;
-            break;
+    } 
+
+    //File type UTF-8
+    if ((Char = fgetc(file)) != EOF){
+        while ((Char = fgetc(file)) != EOF){
+            if (!(Char >= 0x00 && Char <= 0x10FFFF)) {
+                break;
+            }
+            else{
+                type = UTF8;
+                break;
+            }
         }
     } 
 

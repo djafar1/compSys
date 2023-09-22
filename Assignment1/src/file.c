@@ -48,37 +48,40 @@ int main(int argc, char* argv[]) {
     int Char = fgetc(file);
     if (Char == EOF){
         type = EMPTY;
-        fclose(file);
-        return retval;
+        //fclose(file) vi lukker den tilsidst
+        //return retval vi lukker den tilsidst og return retval er kun for fejl.
     }
 
     //File type ASCII
     ungetc(Char, file); 
     while ((Char = fgetc(file)) != EOF){
         if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B || (Char >= 0x20 && Char <= 0x7E))) {
+            ungetc(Char, file);
+            type = DATA;
             break;
         }
         else{
+            printf("%d \n", Char);
             type = ASCII;
-            break;
         }
     }
 
     //File type ISO-8851
-    if ((Char = fgetc(file)) != EOF){
-        while ((Char = fgetc(file)) != EOF){
-            if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B ||
-            (Char >= 0x20 && Char <= 0x7E)||(Char >= 0xA0 && Char <= 0xFF))) {
-                break;
-            }
-            else{
-                type = ISO8851;
-                break;
-            }
+    while ((Char = fgetc(file)) != EOF){
+        if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B ||
+        (Char >= 0x20 && Char <= 0x7E)||(Char >= 0xA0 && Char <= 0xFF))) {
+            type = DATA;
+            break;
         }
-    } 
+        else{
+            type = ISO8851;
+            printf("%d \n", Char);
+        }
+    }
+     
 
     //File type UTF-8
+    /*
     if ((Char = fgetc(file)) != EOF){
         while ((Char = fgetc(file)) != EOF){
             if (!(Char >= 0x00 && Char <= 0x10FFFF)) {
@@ -89,7 +92,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
         }
-    } 
+    } */
 
     fclose(file);
     printf("%s: %s \n", argv[1], FILE_TYPE_STRINGS[type]);

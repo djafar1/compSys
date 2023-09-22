@@ -8,16 +8,16 @@ enum file_type{
     DATA,
     EMPTY,
     ASCII,
-    ISO8851,
+    ISO8859,
     UTF8
 };
 
 const char * const FILE_TYPE_STRINGS[] = {
-    "Data text",
-    "empty File",
+    "data",
+    "empty",
     "ASCII text",
-    "ISO-8852 text",
-    "UTF-8 Unicode text"
+    "ISO-8859 text",
+    "Unicode text, UTF-8 text"
 };
 
 int main(int argc, char* argv[]) {
@@ -61,7 +61,6 @@ int main(int argc, char* argv[]) {
             break;
         }
         else{
-            printf("%d \n", Char);
             type = ASCII;
         }
     }
@@ -74,8 +73,7 @@ int main(int argc, char* argv[]) {
             break;
         }
         else{
-            type = ISO8851;
-            printf("%d \n", Char);
+            type = ISO8859;
         }
     }
      
@@ -95,7 +93,7 @@ int main(int argc, char* argv[]) {
     } */
 
     fclose(file);
-    printf("%s: %s \n", argv[1], FILE_TYPE_STRINGS[type]);
+    printf("%s: %s\n", argv[1], FILE_TYPE_STRINGS[type]);
 
 
     return retval;

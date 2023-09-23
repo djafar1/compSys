@@ -4,7 +4,18 @@
 #include <errno.h>  // errno.
 #include <unistd.h>
 
+<<<<<<< HEAD
 typedef enum FileType{
+=======
+
+int print_error(char *path, int errnum) {
+    return fprintf(stdout, "%s: cannot determine (%s)\n",
+    path, strerror(errnum));
+}
+
+enum file_type{
+    DATA,
+>>>>>>> 8d4e92d6cb24c4153661d2bf81943844f76716dc
     EMPTY,
     DATA,
     ASCII,
@@ -120,6 +131,7 @@ int main(int argc, char* argv[]) {
         retval = EXIT_FAILURE;
         return retval;
     }
+<<<<<<< HEAD
     // Not readable file
     if ((access(argv[1], R_OK)) == -1){
         printf("%s: cannot determine (Permission denied)\n", argv[1]);
@@ -132,6 +144,71 @@ int main(int argc, char* argv[]) {
         return retval;
     }
     FileType type = get_file_type(file);
+=======
+    
+    FILE *file = fopen(argv[1], "r");   
+
+
+    if (access(argv[1], F_OK) == -1) {
+        print_error(argv[1],2);
+        return retval;
+    } 
+
+    // Check if the file is readable
+    if (access(argv[1], R_OK) == -1) {
+        print_error(argv[1],1);
+        return retval;
+    }
+    
+
+    enum file_type type = DATA;
+
+    //File type Empty
+    int Char = fgetc(file);
+    if (Char == EOF){
+        type = EMPTY;
+        //fclose(file) vi lukker den tilsidst
+        //return retval vi lukker den tilsidst og return retval er kun for fejl.
+    }
+
+    //File type ASCII
+    ungetc(Char, file); 
+    while ((Char = fgetc(file)) != EOF){
+        if (!((Char >= 0x07 && Char <= 0x0D) || Char == 0x1B || (Char >= 0x20 && Char <= 0x7E))) {
+            ungetc(Char, file);
+            type = DATA;
+            break;
+        }
+        else{
+            type = ASCII;
+        }
+    }
+
+    //File type ISO-8851
+    while ((Char = fgetc(file)) != EOF){
+        if (!((Char >= 0x07 && Char <= 0x0D) ||(Char == 0x1B)||(Char >= 0x20 && Char <= 0x7E)||(Char >= 0x7f && Char <= 0xFF))) {
+            type = DATA;
+            break;
+        }
+        else{
+            type = ISO8859;
+        }
+    }
+     
+
+    //File type UTF-8
+    // while ((Char = fgetc(file)) != EOF){
+    //     if (!!((Char >= 0x20) ||Char == 0x0A|| Char == 0x0D|| Char == 0x1B ||
+    //     (Char >= 0x20 && Char <= 0x7E)||(Char >= 0x7f && Char <= 0x10FFFF))) {
+    //         break;
+    //     }
+    //     else{
+    //         type = UTF8;
+    //         break; 
+    //     }
+    // }
+
+>>>>>>> 8d4e92d6cb24c4153661d2bf81943844f76716dc
     fclose(file);
     printf("%s: %s\n", argv[1], FILE_TYPE_STRINGS[type]);
     return retval;

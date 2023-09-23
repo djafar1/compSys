@@ -40,6 +40,14 @@ chmod -r test_files/Secret.input
 printf "⠀\n" > test_files/unicode-character.input
 printf "😀\n" > test_files/emoji.input
 printf "😀Hello, World! Hello, World!\n" > test_files/LongUnicode.input
+# 1-byte sequence should return ASCII 
+printf "a\n" > test_files/utf8_1byte.input
+# 2-byte sequence
+printf "\xC2\xA9\n" > test_files/utf8_2byte.input  # ©
+# 3-byte sequence
+printf "\xE2\x82\xAC\n" > test_files/utf8_3byte.input  # €
+# 4-byte sequence
+printf "\xF0\x9F\x8E\x89\n" > test_files/utf8_4byte.input  # 🎉
 
 
 echo "Running the tests.."

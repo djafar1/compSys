@@ -14,11 +14,13 @@ rm -f test_files/*
 echo "Generating test files.."
 printf "Hello, World!\n" > test_files/ascii.input
 printf "Hello, World!" > test_files/ascii2.input
-printf "¬¬¬¬\n" > test_files/iso8859.input
+printf "       " > test_files/OnlySpacesAscii3.input
+printf " Hello, World! " > test_files/ascii4.input
+printf "\xe6 \n \xe6" > test_files/iso8859.input
 printf "Hello,\x00World!\n" > test_files/data.input
 printf "" > test_files/empty.input
-### TODO: Generate more test files ###
-
+printf "hemmelighed" > hemmelig_fil.input
+chmod -r hemmelig_fil.input
 
 echo "Running the tests.."
 exitcode=0

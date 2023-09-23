@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 
     // Check if the file is readable
     if (access(argv[1], R_OK) == -1) {
-        print_error(argv[1],1);
+        print_error(argv[1],13);
         return retval;
     }
     

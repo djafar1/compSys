@@ -19,8 +19,8 @@ printf " Hello, World! " > test_files/ascii4.input
 printf "\xe6 \n \xe6" > test_files/iso8859.input
 printf "Hello,\x00World!\n" > test_files/data.input
 printf "" > test_files/empty.input
-printf "hemmelighed" > hemmelig_fil.input
-chmod -r hemmelig_fil.input
+printf "hemmelighed" > test_files/Secret.input
+chmod -r test_files/Secret.input
 
 echo "Running the tests.."
 exitcode=0

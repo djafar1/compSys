@@ -4,6 +4,11 @@
 #include <errno.h>  // errno.
 #include <unistd.h>
 
+// Assumes: errnum is a valid error number
+int print_error(char *path, int errnum) {
+    return fprintf(stdout, "%s: cannot determine (%s)\n",
+    path, strerror(errnum));
+}
 
 typedef enum FileType{
     EMPTY,
@@ -124,7 +129,6 @@ int main(int argc, char* argv[]) {
 
     FILE *file = fopen(argv[1], "r");   
 
-
     if (access(argv[1], F_OK) == -1) {
         print_error(argv[1],2);
         return retval;
@@ -133,8 +137,9 @@ int main(int argc, char* argv[]) {
     // Check if the file is readable
     if (access(argv[1], R_OK) == -1) {
         print_error(argv[1],13);
-
+        return retval;
     }
+
     FileType type = get_file_type(file);
     fclose(file);
     printf("%s: %s\n", argv[1], FILE_TYPE_STRINGS[type]);

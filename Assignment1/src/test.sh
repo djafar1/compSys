@@ -25,7 +25,7 @@ printf "Hello, World! Hello, World! Hello, World!" > test_files/Longascii4.input
 
 # ISO-8859-1 tests
 printf "\xe6 \n \xe6" > test_files/iso8859.input
-printf "\xff\xff\xff\xff\xff\xff" > test_files/iso88592.input
+printf "\xff\Hello, World! Hello, World! Hello, World!" > test_files/Longiso88592.input
 
 # DATA tests
 printf "Hello,\x00World!\n" > test_files/data.input
@@ -39,6 +39,7 @@ chmod -r test_files/Secret.input
 # UTF-8 tests
 printf "⠀\n" > test_files/unicode-character.input
 printf "😀\n" > test_files/emoji.input
+printf "😀Hello, World! Hello, World!\n" > test_files/LongUnicode.input
 
 
 echo "Running the tests.."

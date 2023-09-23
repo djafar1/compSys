@@ -16,17 +16,30 @@ printf "Hello, World!\n" > test_files/ascii.input
 printf "Hello, World!" > test_files/ascii2.input
 printf "Hello,\x00World!\n" > test_files/data.input
 printf "" > test_files/empty.input
-printf "⠀\n" > test_files/unicode-character.input
 
-### TODO: Generate more test files ###
-
+# ASCII tests
 printf "       " > test_files/OnlySpacesAscii3.input
 printf " Hello, World! " > test_files/ascii4.input
+printf "Hello, World! Hello, World! Hello, World!" > test_files/Longascii4.input
+
+
+# ISO-8859-1 tests
 printf "\xe6 \n \xe6" > test_files/iso8859.input
+printf "\xff\xff\xff\xff\xff\xff" > test_files/iso88592.input
+
+# DATA tests
 printf "Hello,\x00World!\n" > test_files/data.input
-printf "" > test_files/empty.input
+printf "Hello,\x00World!" > test_files/data2.input
+
+
+# Secret tests
 printf "hemmelighed" > test_files/Secret.input
 chmod -r test_files/Secret.input
+
+# UTF-8 tests
+printf "⠀\n" > test_files/unicode-character.input
+printf "😀\n" > test_files/emoji.input
+
 
 echo "Running the tests.."
 exitcode=0

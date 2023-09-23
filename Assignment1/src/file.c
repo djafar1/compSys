@@ -27,16 +27,16 @@ const char * const FILE_TYPE_STRINGS[] = {
     "Unicode text, UTF-8 text"
 };
 
+// Checks if file is ASCII
 int check_ASCII(const unsigned char byte){
     if ((byte >= 0x07 && byte <= 0x0D) || (byte == 0x1B) ||
            (byte >= 0x20 && byte <= 0x7E)){
             return 1;
     }
     return 0;
-
-    
 }
 
+// Checks if file is ISO-8859-1
 int check_ISO_8859_1(const unsigned char byte) {
     if (byte >= 128){
         return 1;
@@ -44,7 +44,7 @@ int check_ISO_8859_1(const unsigned char byte) {
     return 0;
 }
 
-
+// Checks if file is UTF-8
 int utf8_sequence_length(const unsigned char byte)
 {   
     if ((byte & 0xC0) == 0xC0)
@@ -128,7 +128,8 @@ int main(int argc, char* argv[]) {
     }
 
     FILE *file = fopen(argv[1], "r");   
-
+    
+    // Check if the file is exists
     if (access(argv[1], F_OK) == -1) {
         print_error(argv[1],2);
         return retval;

@@ -27,7 +27,7 @@ const char * const FILE_TYPE_STRINGS[] = {
     "Unicode text, UTF-8 text"
 };
 
-// Checks if file is ASCII
+// Checks if file is ASCII 
 int check_ASCII(const unsigned char byte){
     if ((byte >= 0x07 && byte <= 0x0D) || (byte == 0x1B) ||
            (byte >= 0x20 && byte <= 0x7E)){

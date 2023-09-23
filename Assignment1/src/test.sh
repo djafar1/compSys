@@ -31,7 +31,7 @@ printf "\xff\xff\xff\xff\xff\xff" > test_files/iso88592.input
 printf "Hello,\x00World!\n" > test_files/data.input
 printf "Hello,\x00World!" > test_files/data2.input
 
-
+ 
 # Secret tests
 printf "hemmelighed" > test_files/Secret.input
 chmod -r test_files/Secret.input

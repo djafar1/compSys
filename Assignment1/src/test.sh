@@ -19,13 +19,19 @@ printf "" > test_files/empty.input
 
 # ASCII tests
 printf "       " > test_files/OnlySpacesAscii3.input
+printf "1234567890" > test_files/ascii3.input
 printf " Hello, World! " > test_files/ascii4.input
 printf "Hello, World! Hello, World! Hello, World!" > test_files/Longascii4.input
+printf "Line 1\nLine 2\nLine 3\n" > test_files/ascii5.input
+printf "Special Ch@ract3rs!" > test_files/ascii6.input
+printf "\x21\x40\x23\x24\x25\x2A\x28\x29\x2D\x3D\x5B\x5D\x7B\x7D\x7C\x3B\x3A\x27\x22\x2C\x2E\x3C\x3E\x3F\x2F\x5C\x7E" > test_files/ascii9.input #Testing ASCII characters
+printf "\x41\x42\x43\x44\x45\x46\x47\x48\x49\n" > test_files/ascii10.input  # ASCII characters A-I
 
 
 # ISO-8859-1 tests
 printf "\xe6 \n \xe6" > test_files/iso8859.input
 printf "\xff\Hello, World! Hello, World! Hello, World!" > test_files/Longiso88592.input
+printf "\xFF \n" > test_files/iso8859_hex_5.input
 
 # DATA tests
 printf "Hello,\x00World!\n" > test_files/data.input

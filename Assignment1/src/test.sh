@@ -36,8 +36,8 @@ printf "\xFF \n" > test_files/iso8859_hex_5.input
 # DATA tests
 printf "Hello,\x00World!\n" > test_files/data.input
 printf "Hello,\x00World!" > test_files/data2.input
+printf "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09" > test_files/data3.input
 
- 
 # Secret tests
 printf "hemmelighed" > test_files/Secret.input
 chmod -r test_files/Secret.input

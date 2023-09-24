@@ -44,8 +44,9 @@ int check_ISO_8859_1(const unsigned char byte) {
     return 0;
 }
 
-// Checks if file is UTF-8
-int utf8_sequence_length(const unsigned char byte)
+// Determines the length of a UTF-8 sequence
+// by looking at the first byte of the sequence
+int UTF8_sequence_length(const unsigned char byte)
 {   
     if ((byte & 0xC0) == 0xC0)
     {
@@ -61,17 +62,15 @@ int utf8_sequence_length(const unsigned char byte)
     }
     return 0;
 }
-
-int check_UTF8(const unsigned char byte, FILE *const file)
-{
-    int sequence_length = utf8_sequence_length(byte);
+// Checks if file is UTF-8
+int check_UTF8(const unsigned char byte, FILE *const file){
+    int sequence_length = UTF8_sequence_length(byte);
     if (sequence_length == 0){
         return 0;
     }
     long original_pos = ftell(file);
     unsigned char next_byte;
-    for (int i = 0; i < sequence_length; ++i)
-    {
+    for (int i = 0; i < sequence_length; ++i){
         if (fread(&next_byte, sizeof(char), 1, file) == 0 ||
             (next_byte ^ 0x80) >> 6 != 0x00)
         {
@@ -92,6 +91,7 @@ FileType get_file_type(FILE *fp){
     long original_pos;
 
     FileType ft = ASCII;
+    
     while (fread(&byte, size, 1, fp) == 1){
         if (check_ASCII(byte)){
             continue; 
@@ -128,7 +128,6 @@ int main(int argc, char* argv[]) {
     }
 
     FILE *file = fopen(argv[1], "r");   
-    
     // Check if the file is exists
     if (access(argv[1], F_OK) == -1) {
         print_error(argv[1],2);

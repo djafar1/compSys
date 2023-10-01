@@ -45,19 +45,19 @@ struct binsort_data* mk_binsort(struct record* irs, int n) {
 }
 
 void free_binsort(struct binsort_data* data) {
+  free(data->irs);
   free(data);
 }
 
 
 const struct record* lookup_binsort(struct binsort_data *data, int64_t needle) {
   int64_t left = 0;
-  int64_t right = data->n - 1;
+  int64_t right = data->n -1;
   int64_t middle = 0;
   while (left <= right){
     middle = left + (right - left) / 2;
-
     if (data->irs[middle].osm_id == needle){
-      return &data->irs->record[middle];
+      return data->irs[middle].record;
     }
     if (data->irs[middle].osm_id < needle){
       left = middle + 1;

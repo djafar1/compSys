@@ -48,6 +48,7 @@ void free_binsort(struct binsort_data* data) {
   free(data);
 }
 
+
 const struct record* lookup_binsort(struct binsort_data *data, int64_t needle) {
   int64_t left = 0;
   int64_t right = data->n - 1;

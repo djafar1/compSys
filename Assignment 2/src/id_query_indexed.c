@@ -22,22 +22,31 @@ struct indexed_data {
 
 struct indexed_data* mk_indexed(struct record* irs, int n) {
   struct indexed_data* data = malloc(sizeof(struct indexed_data));
+  data->irs = malloc(sizeof(struct index_record)*n);
+  for (int i = 0; i < n; i++){
+    data->irs[i].osm_id = irs[i].osm_id;
+    data->irs[i].record = &irs[i];
+  }
   data->n = n;
-  data->irs = irs;
   return data;
-};
+}
 
 void free_indexed(struct indexed_data* data) {
   free(data);
-};
+}
 
 const struct record* lookup_indexed(struct indexed_data *data, int64_t needle) {
-    assert(0);
-};
+    for (int i = 0; i < (data->n); i++) {
+        if (data->irs->osm_id == needle){
+            return &data->irs->record[i];
+        }
+    }
+    return NULL;
+}
 
 int main(int argc, char** argv) {
   return id_query_loop(argc, argv,
                     (mk_index_fn)mk_indexed,
                     (free_index_fn)free_indexed,
                     (lookup_fn)lookup_indexed);
-};
+}

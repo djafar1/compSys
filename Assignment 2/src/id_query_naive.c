@@ -30,7 +30,6 @@ const struct record* lookup_naive(struct naive_data *data, int64_t needle) {
     if ((data->rs[i].osm_id) == needle)
       return &(data->rs[i]);
   } 
-
   return NULL;
 }
 

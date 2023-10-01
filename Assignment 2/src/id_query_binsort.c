@@ -48,14 +48,25 @@ void free_binsort(struct binsort_data* data) {
   free(data);
 }
 
+
 const struct record* lookup_binsort(struct binsort_data *data, int64_t needle) {
-    for (int i = 0; i < (data->n); i++) {
-        printf("%ld \n", data->irs[i].osm_id);
-        if (data->irs[i].osm_id == needle){
-            return &data->irs->record[i];
-        }
+  int64_t left = 0;
+  int64_t right = data->n - 1;
+  int64_t middle = 0;
+  while (left <= right){
+    middle = left + (right - left) / 2;
+
+    if (data->irs[middle].osm_id == needle){
+      return &data->irs->record[middle];
     }
-    return NULL;
+    if (data->irs[middle].osm_id < needle){
+      left = middle + 1;
+    }
+    else{
+      right = middle - 1;
+    }
+  }
+  return NULL;
 }
 
 int main(int argc, char** argv) {

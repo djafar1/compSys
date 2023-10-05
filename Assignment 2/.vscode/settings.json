@@ -2,6 +2,7 @@
     "files.associations": {
         "id_query.h": "c",
         "coord_query.h": "c",
-        "record.h": "c"
+        "record.h": "c",
+        "errno.h": "c"
     }
 }

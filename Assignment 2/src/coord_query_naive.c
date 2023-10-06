@@ -27,7 +27,7 @@ void free_naive(struct naive_data* data) {
 }
 
 double calculate_distance (double lon, double lat, double lon2, double lat2){
-  return sqrt(pow((lon - lon2), 2) + pow((lat - lat2), 2));
+  return sqrt(pow((lon2 - lon), 2) + pow((lat2 - lat), 2));
 }
 
 const struct record* lookup_naive(struct naive_data *data, double lon, double lat) {
@@ -35,7 +35,7 @@ const struct record* lookup_naive(struct naive_data *data, double lon, double la
   const struct record* current_closest = NULL;
   for (int i = 0; i < (data->n); i++){
     if (calculate_distance(lon, lat, data->rs[i].lon, data->rs[i].lat) < distance){
-      distance = calculate_distance(lon, lat, data->rs[i].lat, data->rs[i].lat);
+      distance = calculate_distance(lon, lat, data->rs[i].lon, data->rs[i].lat);
       current_closest = &(data->rs[i]);
     }
   } 

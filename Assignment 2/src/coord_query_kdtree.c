@@ -9,6 +9,7 @@
 
 #include "record.h"
 #include "coord_query.h"
+#define INITIAL_DEPTH 0
 
 struct Point {
   double lon;
@@ -33,49 +34,35 @@ int compare_points(const void *a, const void *b) {
             return -1;
         } else if (point1->lon > point2->lon) {
             return 1;
-        } else {
-            return 0;
         }
+        return 0;
     } else if (axis == 1) { // Sort by lat
         if (point1->lat < point2->lat) {
             return -1;
         } else if (point1->lat > point2->lat) {
             return 1;
-        } else {
-            return 0;
         }
-    } else {
         return 0;
     }
+    return 0;
 }
 
-struct Node* kdtree(struct Point* points, int depth, int start, int end){
-  if (start > end) {
+struct Node* kdtree(struct Point* points, int n, int depth){
+  if (n <= 0) {
     return NULL;
   }
   axis = depth % 2;
-  qsort(&points[start], end - start + 1, sizeof(struct Point), compare_points);
-  int median_index = (start + end) / 2;
+  qsort(points, n, sizeof(struct Point), &compare_points);
+  int median_index = ceil(n / 2);
   struct Node* node = malloc(sizeof(struct Node));
-  node->point = &points[median_index];
+
+  node->point = (points + median_index);
   node->depth = depth; // Pass depth information just to print it
   node->axis = axis;
-  node->left = kdtree(points, depth + 1, start, median_index - 1);
-  node->right = kdtree(points, depth + 1, median_index + 1, end);
+  node->left = kdtree(points, median_index, depth + 1); //start til midt
+  node->right = kdtree((points + median_index + 1), n - median_index - 1, depth + 1); //midt til slut
   return node;
 }
-
-/*
-void print_kdtree(struct Node* root, int* count) {
-  if (root == NULL) {
-      return;
-  }
-  print_kdtree(root->left, count);
-  (*count)++;
-  printf("Element %d of 20000, Depth: %d, Axis %d: lon=%.2f, lat=%.2f\n", *count, root->depth, root->axis, root->point->lon, root->point->lat);
-  print_kdtree(root->right, count);
-}*/
-
 
 struct Node* mk_kdtree(struct record* rs, int n) {
   struct Point* points = malloc(n * sizeof(struct Point));
@@ -84,38 +71,65 @@ struct Node* mk_kdtree(struct record* rs, int n) {
     points[i].lat = rs[i].lat;
     points[i].rs = &rs[i];
   }
-  struct Node* tree = kdtree(points, 0, 0, n);
-  /*if (tree != NULL) {
-    int count = 0;
-    printf("KD-tree:\n");
-    print_kdtree(tree, &count);
-  }*/
+  struct Node* tree = kdtree(points, n, INITIAL_DEPTH);
   return tree;
 }
 
-void free_kdtree(struct Node* data) {
-  if (data == NULL) {
+void free_kdtree(struct Node* node) {
+  if (node == NULL) {
     return;
   }
-  free_kdtree(data->left);   // Recursively free the left subtree
-  free_kdtree(data->right);  // Recursively free the right subtree
-  free(data->point);         // Free the points array
-  free(data);                // Free the current node
+  free_kdtree(node->left);   // Recursively free the left subtree
+  free_kdtree(node->right);  // Recursively free the right subtree
+  free(node->point);         // Free the points array
+  free(node);                // Free the current node
 }
 
-const struct record* lookup_recursive(struct Point *query, struct Node *node){
+double calculate_distance(struct Point *p1, struct Point *p2){
+  return sqrt(pow(p1->lon - p2->lon, 2) + pow(p1->lat - p2->lat, 2));
+}
+
+// Procedure lookup(closest, query, node)
+struct Point* lookup(struct Point *closest, struct Point *query, struct Node *node){
+  // if node is NULL then
+  if (node == NULL){
+    return closest;
+  }
   
+  // else if node.point is closer to query than closest then
+  if (calculate_distance(query, node->point) < calculate_distance(query, closest)){
+    // replace closest with node.point;
+    closest = node->point;
+  }
+
+  double x = axis == 0 ? node->point->lon : node->point->lat; // node.point[node.axis]
+  double y = axis == 0 ? query->lon : query->lat;             // query [node.axis]
+
+  double diff = x - y; // node.point[node.axis] -  query [node.axis]
+  // radius ← the distance between query and closest
+  double radius = calculate_distance(query, closest);
+ 
+ 
+  // if diff ≥ 0 ∨ radius > |diff| then
+  if (diff >= 0 || radius > fabs(diff)){
+    // lookup (closest, query, node.left)
+    closest = lookup(closest, query, node->left);
+  }
+  // if diff ≤ 0 ∨ radius > |diff| then
+  if (diff <= 0 || radius > fabs(diff)){
+    closest = lookup(closest, query, node->right);
+  }
+  return closest;
 }
 
 const struct record* lookup_kdtree(struct Node *root, double lon, double lat) {
-  struct Point* query = malloc(sizeof(struct Point));
+  struct Point *query = malloc(sizeof(struct Point));
   query->lon = lon;
   query->lat = lat;
-  const struct record* record = lookup_recursive(query, root);
+  struct record *record = lookup(root->point, query, root)->rs;
   free(query);
   return record;
 }
-
 
 int main(int argc, char** argv) {
   return coord_query_loop(argc, argv,

@@ -54,6 +54,11 @@ struct Node* kdtree(struct Point* points, int n, int depth){
   qsort(points, n, sizeof(struct Point), &compare_points);
   int median_index = n / 2; // Use n / 2 as the median index
   struct Node* node = malloc(sizeof(struct Node));
+  // Malloc failure handle
+  if (node == NULL) {
+    fprintf(stderr, "Malloc failed for node\n");
+    exit(EXIT_FAILURE);
+  }
   node->point = (points + median_index);
   node->axis = axis;
   node->left = kdtree(points, median_index, depth + 1); // Start to mid
@@ -64,6 +69,11 @@ struct Node* kdtree(struct Point* points, int n, int depth){
 
 struct Node* mk_kdtree(struct record* rs, int n) {
   struct Point* points = malloc(n * sizeof(struct Point));
+  // Malloc failure handle
+  if (points == NULL) {
+    fprintf(stderr, "Malloc failed for points\n");
+    exit(EXIT_FAILURE);
+  }
   for (int i  = 0; i < n; i++)  {
     points[i].lon = rs[i].lon;
     points[i].lat = rs[i].lat;
@@ -122,6 +132,11 @@ struct Point* lookup(struct Point *closest, struct Point *query, struct Node *no
 
 const struct record* lookup_kdtree(struct Node *root, double lon, double lat) {
   struct Point *query = malloc(sizeof(struct Point));
+  // Malloc failure handle
+  if (query == NULL) {
+    fprintf(stderr, "Malloc failed for query\n");
+    exit(EXIT_FAILURE);
+  }
   query->lon = lon;
   query->lat = lat;
   struct record *record = lookup(root->point, query, root)->rs;

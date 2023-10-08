@@ -21,10 +21,9 @@ struct Node {
   struct Point *point;
   struct Node *left, *right;
   int axis;
-  int depth;
 };
 
-int axis = 0;
+int axis = 0; // global axis to determine whether sort by lon or lat.
 
 int compare_points(const void *a, const void *b) {
     const struct Point *point1 = (const struct Point *)a;
@@ -53,16 +52,15 @@ struct Node* kdtree(struct Point* points, int n, int depth){
   }
   axis = depth % 2;
   qsort(points, n, sizeof(struct Point), &compare_points);
-  int median_index = ceil(n / 2);
+  int median_index = n / 2; // Use n / 2 as the median index
   struct Node* node = malloc(sizeof(struct Node));
-
   node->point = (points + median_index);
-  node->depth = depth; // Pass depth information just to print it
   node->axis = axis;
-  node->left = kdtree(points, median_index, depth + 1); //start til midt
-  node->right = kdtree((points + median_index + 1), n - median_index - 1, depth + 1); //midt til slut
+  node->left = kdtree(points, median_index, depth + 1); // Start to mid
+  node->right = kdtree((points + median_index + 1), n - median_index - 1, depth + 1); // Mid to end
   return node;
 }
+
 
 struct Node* mk_kdtree(struct record* rs, int n) {
   struct Point* points = malloc(n * sizeof(struct Point));
@@ -79,10 +77,10 @@ void free_kdtree(struct Node* node) {
   if (node == NULL) {
     return;
   }
-  free_kdtree(node->left);   // Recursively free the left subtree
-  free_kdtree(node->right);  // Recursively free the right subtree
-  free(node->point);         // Free the points array
-  free(node);                // Free the current node
+  free_kdtree(node->left);   // Recursively free left subtree
+  free_kdtree(node->right);  // Recursively free right subtree
+  free(node->point);         // Free the points
+  free(node);                // Free the node
 }
 
 double calculate_distance(struct Point *p1, struct Point *p2){
@@ -95,20 +93,20 @@ struct Point* lookup(struct Point *closest, struct Point *query, struct Node *no
   if (node == NULL){
     return closest;
   }
-  
+  double distance_query_node = calculate_distance(query, node->point); // distance between nodepoint and query
+  double distance_closest_query = calculate_distance(closest, query); // distance between closest and query
   // else if node.point is closer to query than closest then
-  if (calculate_distance(query, node->point) < calculate_distance(query, closest)){
+  if (distance_query_node < distance_closest_query){
     // replace closest with node.point;
     closest = node->point;
   }
 
-  double x = axis == 0 ? node->point->lon : node->point->lat; // node.point[node.axis]
-  double y = axis == 0 ? query->lon : query->lat;             // query [node.axis]
+  double x = node->axis == 0 ? node->point->lon : node->point->lat; // node.point[node.axis]
+  double y = node->axis == 0 ? query->lon : query->lat;             // query [node.axis]
 
   double diff = x - y; // node.point[node.axis] -  query [node.axis]
-  // radius ← the distance between query and closest
-  double radius = calculate_distance(query, closest);
- 
+
+  double radius = calculate_distance(query, closest);   // radius ← the distance between query and closest
  
   // if diff ≥ 0 ∨ radius > |diff| then
   if (diff >= 0 || radius > fabs(diff)){

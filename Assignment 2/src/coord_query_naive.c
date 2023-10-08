@@ -17,6 +17,11 @@ struct naive_data {
 
 struct naive_data* mk_naive(struct record* rs, int n) {
   struct naive_data* data = malloc(sizeof(struct naive_data));
+  // Malloc failure handle
+  if (data == NULL) {
+    fprintf(stderr, "Malloc failed for data\n");
+    exit(EXIT_FAILURE);
+  }
   data->n = n;
   data->rs = rs;
   return data;

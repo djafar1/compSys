@@ -22,7 +22,16 @@ struct indexed_data {
 
 struct indexed_data* mk_indexed(struct record* irs, int n) {
   struct indexed_data* data = malloc(sizeof(struct indexed_data));
+  if (data == NULL) {
+    fprintf(stderr, "Malloc failed for data\n");
+    exit(EXIT_FAILURE);
+  }
   data->irs = malloc(sizeof(struct index_record)*n);
+  if (data->irs == NULL) {
+    fprintf(stderr, "Malloc failed for irs\n");
+    free(data); // freeing data since this didn't fail being malloced.
+    exit(EXIT_FAILURE);
+  }
   for (int i = 0; i < n; i++){
     data->irs[i].osm_id = irs[i].osm_id;
     data->irs[i].record = &irs[i];

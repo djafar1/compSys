@@ -86,7 +86,7 @@ void free_kdtree(struct Node* node) {
 }
 
 double calculate_distance(struct Point *p1, struct Point *p2){
-  return sqrt(pow(p1->lon - p2->lon, 2) + pow(p1->lat - p2->lat, 2));
+  return sqrt((pow((p2->lon - p1->lon), 2))+ (pow((p2->lat - p1->lat), 2)));
 }
 
 // Procedure lookup(closest, query, node)

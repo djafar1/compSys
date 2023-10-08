@@ -18,6 +18,7 @@ struct Point {
 };
 
 struct Node {
+  struct Point *TheArrayOfPoints; // Only used to free the whole array of points.
   struct Point *point;
   struct Node *left, *right;
   int axis;
@@ -80,17 +81,24 @@ struct Node* mk_kdtree(struct record* rs, int n) {
     points[i].rs = &rs[i];
   }
   struct Node* tree = kdtree(points, n, INITIAL_DEPTH);
+  tree->TheArrayOfPoints = points; // This is used to free the whole array of points in free_kdtree()
   return tree;
 }
 
-void free_kdtree(struct Node* node) {
+// This free the whole tree, the root and all of the nodes.
+void free_kdtree_recursive(struct Node* node){
   if (node == NULL) {
     return;
   }
-  free_kdtree(node->left);   // Recursively free left subtree
-  free_kdtree(node->right);  // Recursively free right subtree
-  free(node->point);         // Free the points
+  free_kdtree_recursive(node->left);   // Recursively free left subtree
+  free_kdtree_recursive(node->right);  // Recursively free right subtree
   free(node);                // Free the node
+}
+
+//This call the free_kdtree_recursive and frees the points.
+void free_kdtree(struct Node* node) {
+  free(node->TheArrayOfPoints);         // Free the points
+  free_kdtree_recursive(node);
 }
 
 double calculate_distance(struct Point *p1, struct Point *p2){

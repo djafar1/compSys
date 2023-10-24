@@ -5,7 +5,6 @@
 
 struct job_queue {
   int size;
-  int curSize;
   int rear;
   int front;
 };

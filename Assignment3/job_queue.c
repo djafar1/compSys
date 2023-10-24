@@ -16,12 +16,6 @@ int job_queue_init(struct job_queue *job_queue, int capacity) {
 }
 
 int job_queue_destroy(struct job_queue *job_queue) {
-  
-  if (job_queue->size != job_queue->curSize)
-  {
-    assert(1);
-  }
-  
   assert(0);
 }
 

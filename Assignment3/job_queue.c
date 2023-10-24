@@ -28,7 +28,17 @@ int job_queue_destroy(struct job_queue *job_queue) {
 }
 
 int job_queue_push(struct job_queue *job_queue, void *data) {
-  assert(0);
+  if (job_queue_curSize(job_queue) == job_queue->size)
+  {
+    // pause input
+    assert(1);
+  }
+  else
+  {
+    job_queue->front =+ 1;
+    // insert data?;
+    assert(0);
+  }
 }
 
 int job_queue_pop(struct job_queue *job_queue, void **data) {

@@ -5,10 +5,23 @@
 #include "job_queue.h"
 
 int job_queue_init(struct job_queue *job_queue, int capacity) {
-  assert(0);
+  job_queue->size = capacity; 
+  job_queue->front = 0;
+  job_queue->rear = 0;
+  job_queue->curSize = ((job_queue->rear) - (job_queue->front));
+  if ( job_queue->curSize == 0){
+    assert(0);
+  }
+  assert(1);
 }
 
 int job_queue_destroy(struct job_queue *job_queue) {
+  
+  if (job_queue->size != job_queue->curSize)
+  {
+    assert(1);
+  }
+  
   assert(0);
 }
 

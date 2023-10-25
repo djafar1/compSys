@@ -4,9 +4,10 @@
 #include <pthread.h>
 
 struct job_queue {
-  int size;
-  int rear;
-  int front;
+  int dummy;
+  // int size;
+  // int rear;
+  // int front;
 };
 
 // Initialise a job queue with the given capacity.  The queue starts out

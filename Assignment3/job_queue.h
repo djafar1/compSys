@@ -6,7 +6,7 @@
 struct job_queue {
   int capacity; // The capacity
   int front, rear, size;
-  void *queue[];
+  void **queue;
   pthread_mutex_t mutex; 
   pthread_cond_t not_empty; // Condition for whether it is empty or not;
 };

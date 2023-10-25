@@ -5,12 +5,10 @@
 
 struct job_queue {
   int capacity; // The capacity
-  int size; // Number of element in the queue
-  int rear;  // Tail index for the queue
-  int front; // Head index for the queue
-  void **elements; // Something
-  pthread_mutex_t mutex;
-  pthread_cond_t not_empty; 
+  int front, rear, size;
+  void *queue[];
+  pthread_mutex_t mutex; 
+  pthread_cond_t not_empty; // Condition for whether it is empty or not;
 };
 
 // Initialise a job queue with the given capacity.  The queue starts out

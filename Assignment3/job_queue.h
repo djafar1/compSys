@@ -4,10 +4,13 @@
 #include <pthread.h>
 
 struct job_queue {
-  int dummy;
-  // int size;
-  // int rear;
-  // int front;
+  int capacity; // The capacity
+  int size; // Number of element in the queue
+  int rear;  // Tail index for the queue
+  int front; // Head index for the queue
+  void **elements; // Something
+  pthread_mutex_t mutex;
+  pthread_cond_t not_empty; 
 };
 
 // Initialise a job queue with the given capacity.  The queue starts out

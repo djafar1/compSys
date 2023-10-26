@@ -60,6 +60,7 @@ void* worker(void *arg) {
       fib_line(line);
       free(line);
     } else {
+      printf("We trying to kill it \n");
       // If job_queue_pop() returned non-zero, that means the queue is
       // being killed (or some other error occured).  In any case,
       // that means it's time for this thread to die.
@@ -89,7 +90,7 @@ int main(int argc, char * const *argv) {
 
   // Create job queue.
   struct job_queue jq;
-  job_queue_init(&jq, 64);
+  job_queue_init(&jq, 2);
 
   // Start up the worker threads.
   pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
@@ -105,12 +106,10 @@ int main(int argc, char * const *argv) {
   while ((line_len = getline(&line, &buf_len, stdin)) != -1) {
     job_queue_push(&jq, (void*)strdup(line));
   }
-  printf("Trying to free line");
   free(line);
-  printf("Free line");
   // Destroy the queue.
   job_queue_destroy(&jq);
-  printf("Destroy queue");
+  printf("Destroy queue \n");
 
   // Wait for all threads to finish.  This is important, at some may
   // still be working on their job.

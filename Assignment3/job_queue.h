@@ -1,9 +1,11 @@
 #ifndef JOB_QUEUE_H
 #define JOB_QUEUE_H
 
+#include <stdbool.h>
 #include <pthread.h>
 
 struct job_queue {
+  bool destroy;
   int capacity; // The capacity
   int front, rear, size;
   void **queue;

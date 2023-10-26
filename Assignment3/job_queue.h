@@ -9,6 +9,7 @@ struct job_queue {
   void **queue;
   pthread_mutex_t mutex; 
   pthread_cond_t not_empty; // Condition for whether it is empty or not;
+  pthread_cond_t not_full;
 };
 
 // Initialise a job queue with the given capacity.  The queue starts out

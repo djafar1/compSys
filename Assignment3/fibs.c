@@ -98,8 +98,6 @@ int main(int argc, char * const *argv) {
       err(1, "pthread_create() failed");
     }
   }
-
-
   // Now read lines from stdin until EOF.
   char *line = NULL;
   ssize_t line_len;
@@ -107,10 +105,12 @@ int main(int argc, char * const *argv) {
   while ((line_len = getline(&line, &buf_len, stdin)) != -1) {
     job_queue_push(&jq, (void*)strdup(line));
   }
+  printf("Trying to free line");
   free(line);
-
+  printf("Free line");
   // Destroy the queue.
   job_queue_destroy(&jq);
+  printf("Destroy queue");
 
   // Wait for all threads to finish.  This is important, at some may
   // still be working on their job.

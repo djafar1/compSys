@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h> 
+#include <assert.h>
 
 #include "job_queue.h"
 
@@ -19,53 +19,50 @@ int job_queue_init(struct job_queue *job_queue, int capacity) {
 
 int job_queue_destroy(struct job_queue *job_queue) {
   pthread_mutex_lock(&job_queue->mutex);
+  printf("Destroying job queue\n");
   job_queue->destroy = true;
-  while (job_queue->size != 0){
-    pthread_cond_broadcast(&job_queue->not_empty);
+  pthread_cond_broadcast(&job_queue->not_empty);
+  while (job_queue->size > 0) {
+    pthread_cond_wait(&job_queue->not_empty, &job_queue->mutex);
   }
+  printf("Inside mutex lock and destroying\n");
+  pthread_mutex_unlock(&job_queue->mutex);
+
+  pthread_mutex_destroy(&job_queue->mutex);
   pthread_cond_destroy(&job_queue->not_empty);
   pthread_cond_destroy(&job_queue->not_full);
-  pthread_mutex_destroy(&job_queue->mutex);
   free(job_queue->queue);
-  pthread_mutex_unlock(&job_queue->mutex);
+  job_queue->capacity = 0;
   return 0;
 }
 
 int job_queue_push(struct job_queue *job_queue, void *data) {
   pthread_mutex_lock(&job_queue->mutex);
-  if (job_queue->destroy == true){
-    return(1);
-  }
-
   while ((job_queue->rear + 1) % job_queue->capacity == job_queue->front) {
     pthread_cond_wait(&job_queue->not_full, &job_queue->mutex);
   }
-
-  pthread_cond_signal(&job_queue->not_empty);
   job_queue->queue[job_queue->rear] = data;
-  job_queue->rear = (job_queue->rear + 1) % job_queue->capacity;
   job_queue->size += 1;
+  job_queue->rear = (job_queue->rear + 1) % job_queue->capacity;
+  pthread_cond_signal(&job_queue->not_empty);
   pthread_mutex_unlock(&job_queue->mutex);
-
   return 0;
 }
 
 int job_queue_pop(struct job_queue *job_queue, void **data) {
   pthread_mutex_lock(&job_queue->mutex);
-
-  while (job_queue->front == job_queue->rear) {
+  while (job_queue->front == job_queue->rear && !job_queue->destroy) {
     pthread_cond_wait(&job_queue->not_empty, &job_queue->mutex);
   }
-
-  pthread_cond_signal(&job_queue->not_full);
-  *data = job_queue->queue[job_queue->front];
-  job_queue->front = (job_queue->front + 1) % job_queue->capacity;
-  job_queue->size -= 1;
-  pthread_mutex_unlock(&job_queue->mutex);
-
-  if (job_queue->destroy == true){
-    printf("eep");
-    return(-1);
+  if (job_queue->destroy && job_queue->size == 0) {
+    pthread_cond_signal(&job_queue->not_empty);
+    pthread_mutex_unlock(&job_queue->mutex);
+    return -1;
   }
+  *data = job_queue->queue[job_queue->front];
+  job_queue->size -= 1;
+  job_queue->front = (job_queue->front + 1) % job_queue->capacity;
+  pthread_cond_signal(&job_queue->not_full);
+  pthread_mutex_unlock(&job_queue->mutex);
   return 0;
 }

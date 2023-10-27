@@ -29,7 +29,6 @@ int job_queue_destroy(struct job_queue *job_queue) {
   pthread_cond_destroy(&job_queue->not_empty);
   pthread_cond_destroy(&job_queue->not_full);
   free(job_queue->queue);
-  job_queue->capacity = 0;
   return 0;
 }
 

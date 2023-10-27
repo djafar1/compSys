@@ -22,6 +22,22 @@ pthread_mutex_t stdout_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #include "histogram.h"
 
+void* worker(void *arg) {
+  struct job_queue *jq = arg;
+  while (1) {
+    int data;
+    if (job_queue_pop(jq, (void**)&data) == 0) {
+      // printf("%s, %s \n", data->needle, data->path);
+    } else {
+      // If job_queue_pop() returned non-zero, that means the queue is
+      // being killed (or some other error occurred). In any case,
+      // that means it's time for this thread to die.
+      break;
+    }
+  }
+  return NULL;
+}
+
 int main(int argc, char * const *argv) {
   if (argc < 2) {
     err(1, "usage: paths...");
@@ -49,8 +65,18 @@ int main(int argc, char * const *argv) {
     paths = &argv[1];
   }
 
-  assert(0); // Initialise the job queue and some worker threads here.
+  // Create job queue.
+  struct job_queue jq;
+  job_queue_init(&jq, 64);
 
+
+  // Start up the worker threads.
+  pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
+  for (int i = 0; i < num_threads; i++) {
+    if (pthread_create(&threads[i], NULL, &worker, &jq) != 0) {
+      err(1, "pthread_create() failed");
+    }
+  }
   // FTS_LOGICAL = follow symbolic links
   // FTS_NOCHDIR = do not change the working directory of the process
   //

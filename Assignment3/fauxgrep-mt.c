@@ -21,10 +21,10 @@
 
 pthread_mutex_t stdout_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-struct FauxData
+struct Data
 {
-  char *needle;
-  char *path;
+  char const *needle;
+  struct job_queue *jq;
 };
 
 
@@ -59,18 +59,16 @@ int fauxgrep_file(char const *needle, char const *path) {
 // Each thread will run this function.  The thread argument is a
 // pointer to a job queue.
 void* worker(void *arg) {
-  struct job_queue *jq = arg;
+  struct Data *data = arg;
   while (1) {
-    struct FauxData *data;
-    if (job_queue_pop(jq, (void**)&data) == 0) {
+    char *path;
+    if (job_queue_pop(data->jq, (void**)&path) == 0) {
       // printf("%s, %s \n", data->needle, data->path);
-      fauxgrep_file(data->needle, data->path);
-      free(data->needle); 
-      free(data->path); 
-      free(data);
+      fauxgrep_file(data->needle, path);
+      free(path); 
     } else {
       // If job_queue_pop() returned non-zero, that means the queue is
-      // being killed (or some other error occured).  In any case,
+      // being killed (or some other error occurred). In any case,
       // that means it's time for this thread to die.
       break;
     }
@@ -115,10 +113,14 @@ int main(int argc, char * const *argv) {
   job_queue_init(&jq, 64);
 
 
+  // Put job queue and needle into struct
+  struct Data thread_data;
+  thread_data.jq = &jq;
+  thread_data.needle = needle;
   // Start up the worker threads.
   pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
   for (int i = 0; i < num_threads; i++) {
-    if (pthread_create(&threads[i], NULL, &worker, &jq) != 0) {
+    if (pthread_create(&threads[i], NULL, &worker, &thread_data) != 0) {
       err(1, "pthread_create() failed");
     }
   }
@@ -137,17 +139,16 @@ int main(int argc, char * const *argv) {
   }
 
   FTSENT *p;
-  struct FauxData *job;
+  char *path;
+
   while ((p = fts_read(ftsp)) != NULL) {
     //printf("%s \n", p->fts_path);
     switch (p->fts_info) {
     case FTS_D:
       break;
     case FTS_F:
-      job = (struct FauxData *)malloc(sizeof(struct FauxData));
-      job->needle = strdup(needle);
-      job->path = strdup(p->fts_path);
-      job_queue_push(&jq, job); // Process the file p->fts_path, somehow.
+      path = strdup(p->fts_path);
+      job_queue_push(&jq, path); // Process the file p->fts_path, somehow.
       break;
     default:
       break;
@@ -165,6 +166,6 @@ int main(int argc, char * const *argv) {
     }
   }
   free(threads);
-  
+
   return 0;
 }

@@ -42,7 +42,9 @@ int fauxgrep_file(char const *needle, char const *path) {
 
   while (getline(&line, &linelen, f) != -1) {
     if (strstr(line, needle) != NULL) {
+      assert(pthread_mutex_lock(&stdout_mutex) == 0);
       printf("%s:%d: %s", path, lineno, line);
+      assert(pthread_mutex_unlock(&stdout_mutex) == 0);
     }
 
     lineno++;
@@ -54,7 +56,6 @@ int fauxgrep_file(char const *needle, char const *path) {
   return 0;
 }
 
-
 // Each thread will run this function.  The thread argument is a
 // pointer to a job queue.
 void* worker(void *arg) {
@@ -62,11 +63,11 @@ void* worker(void *arg) {
   while (1) {
     struct FauxData *data;
     if (job_queue_pop(jq, (void**)&data) == 0) {
-      //printf("%s, %s \n", data->needle, data->path);
+      // printf("%s, %s \n", data->needle, data->path);
       fauxgrep_file(data->needle, data->path);
       free(data->needle); 
-      free(data->path);   
-      free(data);          
+      free(data->path); 
+      free(data);
     } else {
       // If job_queue_pop() returned non-zero, that means the queue is
       // being killed (or some other error occured).  In any case,
@@ -136,16 +137,17 @@ int main(int argc, char * const *argv) {
   }
 
   FTSENT *p;
-  struct FauxData job;
+  struct FauxData *job;
   while ((p = fts_read(ftsp)) != NULL) {
     //printf("%s \n", p->fts_path);
     switch (p->fts_info) {
     case FTS_D:
       break;
     case FTS_F:
-      job.needle = strdup(needle);
-      job.path = strdup(p->fts_path);
-      job_queue_push(&jq, &job); // Process the file p->fts_path, somehow.
+      job = (struct FauxData *)malloc(sizeof(struct FauxData));
+      job->needle = strdup(needle);
+      job->path = strdup(p->fts_path);
+      job_queue_push(&jq, job); // Process the file p->fts_path, somehow.
       break;
     default:
       break;

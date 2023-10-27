@@ -155,6 +155,7 @@ int main(int argc, char * const *argv) {
     }
   }
 
+
   // Destroy the queue.
   job_queue_destroy(&jq);
 

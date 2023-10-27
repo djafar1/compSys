@@ -19,15 +19,12 @@ int job_queue_init(struct job_queue *job_queue, int capacity) {
 
 int job_queue_destroy(struct job_queue *job_queue) {
   pthread_mutex_lock(&job_queue->mutex);
-  printf("Destroying job queue\n");
   job_queue->destroy = true;
   pthread_cond_broadcast(&job_queue->not_empty);
   while (job_queue->size > 0) {
     pthread_cond_wait(&job_queue->not_empty, &job_queue->mutex);
   }
-  printf("Inside mutex lock and destroying\n");
   pthread_mutex_unlock(&job_queue->mutex);
-
   pthread_mutex_destroy(&job_queue->mutex);
   pthread_cond_destroy(&job_queue->not_empty);
   pthread_cond_destroy(&job_queue->not_full);

@@ -63,7 +63,6 @@ void* worker(void *arg) {
   while (1) {
     struct FauxData *data;
     if (job_queue_pop(jq, (void**)&data) == 0) {
-      // printf("%s, %s \n", data->needle, data->path);
       fauxgrep_file(data->needle, data->path);
       free(data->needle); 
       free(data->path); 

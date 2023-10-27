@@ -89,7 +89,7 @@ int main(int argc, char * const *argv) {
 
   // Create job queue.
   struct job_queue jq;
-  job_queue_init(&jq, 1);
+  job_queue_init(&jq, 64);
 
   // Start up the worker threads.
   pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
@@ -98,6 +98,8 @@ int main(int argc, char * const *argv) {
       err(1, "pthread_create() failed");
     }
   }
+
+
   // Now read lines from stdin until EOF.
   char *line = NULL;
   ssize_t line_len;
@@ -105,11 +107,10 @@ int main(int argc, char * const *argv) {
   while ((line_len = getline(&line, &buf_len, stdin)) != -1) {
     job_queue_push(&jq, (void*)strdup(line));
   }
-
   free(line);
+
   // Destroy the queue.
   job_queue_destroy(&jq);
-  printf("Destroy queue \n");
 
   // Wait for all threads to finish.  This is important, at some may
   // still be working on their job.

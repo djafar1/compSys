@@ -19,6 +19,64 @@
 
 #include "job_queue.h"
 
+pthread_mutex_t stdout_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct FauxData
+{
+  char *needle;
+  char *path;
+};
+
+
+int fauxgrep_file(char const *needle, char const *path) {
+  FILE *f = fopen(path, "r");
+
+  if (f == NULL) {
+    warn("failed to open %s", path);
+    return -1;
+  }
+
+  char *line = NULL;
+  size_t linelen = 0;
+  int lineno = 1;
+
+  while (getline(&line, &linelen, f) != -1) {
+    if (strstr(line, needle) != NULL) {
+      printf("%s:%d: %s", path, lineno, line);
+    }
+
+    lineno++;
+  }
+
+  free(line);
+  fclose(f);
+
+  return 0;
+}
+
+
+// Each thread will run this function.  The thread argument is a
+// pointer to a job queue.
+void* worker(void *arg) {
+  struct job_queue *jq = arg;
+  while (1) {
+    struct FauxData *data;
+    if (job_queue_pop(jq, (void**)&data) == 0) {
+      //printf("%s, %s \n", data->needle, data->path);
+      fauxgrep_file(data->needle, data->path);
+      free(data->needle); 
+      free(data->path);   
+      free(data);          
+    } else {
+      // If job_queue_pop() returned non-zero, that means the queue is
+      // being killed (or some other error occured).  In any case,
+      // that means it's time for this thread to die.
+      break;
+    }
+  }
+  return NULL;
+}
+
 int main(int argc, char * const *argv) {
   if (argc < 2) {
     err(1, "usage: [-n INT] STRING paths...");
@@ -51,7 +109,18 @@ int main(int argc, char * const *argv) {
     paths = &argv[2];
   }
 
-  assert(0); // Initialise the job queue and some worker threads here.
+  // Create job queue.
+  struct job_queue jq;
+  job_queue_init(&jq, 64);
+
+
+  // Start up the worker threads.
+  pthread_t *threads = calloc(num_threads, sizeof(pthread_t));
+  for (int i = 0; i < num_threads; i++) {
+    if (pthread_create(&threads[i], NULL, &worker, &jq) != 0) {
+      err(1, "pthread_create() failed");
+    }
+  }
 
   // FTS_LOGICAL = follow symbolic links
   // FTS_NOCHDIR = do not change the working directory of the process
@@ -67,21 +136,33 @@ int main(int argc, char * const *argv) {
   }
 
   FTSENT *p;
+  struct FauxData job;
   while ((p = fts_read(ftsp)) != NULL) {
+    //printf("%s \n", p->fts_path);
     switch (p->fts_info) {
     case FTS_D:
       break;
     case FTS_F:
-      assert(0); // Process the file p->fts_path, somehow.
+      job.needle = strdup(needle);
+      job.path = strdup(p->fts_path);
+      job_queue_push(&jq, &job); // Process the file p->fts_path, somehow.
       break;
     default:
       break;
     }
   }
 
-  fts_close(ftsp);
+  // Destroy the queue.
+  job_queue_destroy(&jq);
 
-  assert(0); // Shut down the job queue and the worker threads here.
-
+  // Wait for all threads to finish.  This is important, at some may
+  // still be working on their job.
+  for (int i = 0; i < num_threads; i++) {
+    if (pthread_join(threads[i], NULL) != 0) {
+      err(1, "pthread_join() failed");
+    }
+  }
+  free(threads);
+  
   return 0;
 }

@@ -155,6 +155,8 @@ int main(int argc, char * const *argv) {
     }
   }
 
+  fts_close(ftsp);
+
   // Destroy the queue.
   job_queue_destroy(&jq);
 

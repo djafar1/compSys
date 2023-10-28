@@ -41,7 +41,7 @@ int fhistogram(char const *path) {
   while (fread(&c, sizeof(c), 1, f) == 1) {
     i++;
     update_histogram(local_histogram, c);
-    if ((i % 1000000) == 0) {
+    if ((i % 100000) == 0) {
       merge_histogram(local_histogram, global_histogram);
       print_histogram(global_histogram);
     }
@@ -156,8 +156,8 @@ int main(int argc, char * const *argv) {
     }
   }
   free(threads);
-
   move_lines(9);
+  printf("%d \n", num_threads);
 
   return 0;
 }

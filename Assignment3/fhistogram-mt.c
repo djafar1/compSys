@@ -29,7 +29,6 @@ int fhistogram(char const *path) {
   FILE *f = fopen(path, "r");
 
   int local_histogram[8] = { 0 };
-
   if (f == NULL) {
     fflush(stdout);
     warn("failed to open %s", path);
@@ -62,10 +61,10 @@ int fhistogram(char const *path) {
 void* worker(void *arg) {
   struct job_queue *jq = arg;
   while (1) {
-    FTSENT *p;
-    if (job_queue_pop(jq, (void**)&p) == 0) {
-      fhistogram(p->fts_path);
-      free(p);
+    char *path;
+    if (job_queue_pop(jq, (void**)&path) == 0) {
+      fhistogram(path);
+      free(path);
     } else {
       // If job_queue_pop() returned non-zero, that means the queue is
       // being killed (or some other error occured).  In any case,
@@ -130,13 +129,15 @@ int main(int argc, char * const *argv) {
   }
 
   FTSENT *p;
+  char *path;
+
   while ((p = fts_read(ftsp)) != NULL) {
     switch (p->fts_info) {
     case FTS_D:
       break;
     case FTS_F:
-      p = malloc(sizeof(FTSENT));
-      job_queue_push(&jq, (strdup(p->fts_path))); // Process the file p->fts_path, somehow.      break;
+      path = strdup(p->fts_path);
+      job_queue_push(&jq, path); // Process the file p->fts_path, somehow.  
     default:
       break;
     }

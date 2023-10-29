@@ -25,7 +25,6 @@ pthread_mutex_t stdout_mutex = PTHREAD_MUTEX_INITIALIZER;
 int global_histogram[8] = { 0 };
 
 int fhistogram(char const *path) {
-  assert(pthread_mutex_lock(&stdout_mutex) == 0);
   FILE *f = fopen(path, "r");
 
   int local_histogram[8] = { 0 };
@@ -42,13 +41,17 @@ int fhistogram(char const *path) {
     i++;
     update_histogram(local_histogram, c);
     if ((i % 100000) == 0) {
+      assert(pthread_mutex_lock(&stdout_mutex) == 0);
       merge_histogram(local_histogram, global_histogram);
       print_histogram(global_histogram);
+      assert(pthread_mutex_unlock(&stdout_mutex) == 0);
+
     }
   }
 
   fclose(f);
 
+  assert(pthread_mutex_lock(&stdout_mutex) == 0);
   merge_histogram(local_histogram, global_histogram);
   print_histogram(global_histogram);
   assert(pthread_mutex_unlock(&stdout_mutex) == 0);

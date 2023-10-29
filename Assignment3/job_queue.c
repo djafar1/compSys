@@ -8,6 +8,12 @@ int job_queue_init(struct job_queue *job_queue, int capacity) {
   job_queue->destroy = false;
   job_queue->capacity = capacity; 
   job_queue->queue = malloc (sizeof(void*) * capacity);
+  // Malloc failure handle
+  if (job_queue->queue == NULL) {
+    fprintf(stderr, "Malloc failed for queue\n");
+    exit(EXIT_FAILURE);
+  }
+  
   job_queue->size = 0;
   job_queue->front = 0;
   job_queue->rear = 0;

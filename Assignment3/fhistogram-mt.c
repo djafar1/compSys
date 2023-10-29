@@ -159,8 +159,8 @@ int main(int argc, char * const *argv) {
     }
   }
   free(threads);
+  
   move_lines(9);
-  printf("%d \n", num_threads);
 
   return 0;
 }

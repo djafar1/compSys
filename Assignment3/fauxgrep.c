@@ -77,6 +77,5 @@ int main(int argc, char * const *argv) {
   }
 
   fts_close(ftsp);
-
   return 0;
 }

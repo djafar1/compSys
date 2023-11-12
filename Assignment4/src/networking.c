@@ -20,7 +20,7 @@ char my_ip[IP_LEN];
 char my_port[PORT_LEN];
 
 int c;
-
+int network_socket;
 /*
  * Gets a sha256 hash of specified data, sourcedata. The hash itself is
  * placed into the given variable 'hash'. Any size can be created, but a
@@ -69,7 +69,6 @@ void get_file_sha(const char* sourcefile, hashdata_t hash, int size)
 
     get_data_sha(buffer, hash, casc_file_size, size);
 }
-
 /*
  * Combine a password and salt together and hash the result to form the 
  * 'signature'. The result should be written to the 'hash' variable. Note that 
@@ -80,6 +79,19 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
 {
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+    char to_hash[strlen(password) + strlen(salt)];
+    // TODO Put some code in here so that to_hash contains the password and 
+    // salt and is then hashed
+    strcpy(to_hash, password);
+    strcat(to_hash, salt);
+    get_data_sha(to_hash, hash, strlen(to_hash), SHA256_HASH_SIZE);
+    // You can use this to confirm that you are hashing what you think you are
+    // hashing
+    for (uint8_t i=0; i<strlen(to_hash); i++)
+    {
+        printf("[%c]", to_hash[i]);
+    }
+    printf("\n");
 }
 
 /*
@@ -88,8 +100,19 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
  */
 void register_user(char* username, char* password, char* salt)
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
+    RequestHeader_t request;
+    // Set the username in the request header
+    strncpy(request.username, username, USERNAME_LEN - 1);
+    request.username[USERNAME_LEN - 1] = '\0';
+
+    // Generate the signature and set it in the request header
+    get_signature(password, salt, &(request.salted_and_hashed));
+
+    // Set the length in the request header
+    request.length = sizeof(RequestHeader_t);
+
+    // Send the request to the server
+    write(network_socket, &request, request.length);
 }
 
 /*
@@ -101,6 +124,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
 {
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+    assert(0);
 }
 
 int main(int argc, char **argv)
@@ -179,17 +203,19 @@ int main(int argc, char **argv)
     // Note that a random salt should be used, but you may find it easier to
     // repeatedly test the same user credentials by using the hard coded value
     // below instead, and commenting out this randomly generating section.
+    /*
     for (int i=0; i<SALT_LEN; i++)
     {
         user_salt[i] = 'a' + (random() % 26);
     }
-    user_salt[SALT_LEN] = '\0';
-    //strncpy(user_salt, 
-    //    "0123456789012345678901234567890123456789012345678901234567890123\0", 
-    //    SALT_LEN+1);
+    user_salt[SALT_LEN] = '\0';*/
+    strncpy(user_salt, 
+        "0123456789012345678901234567890123456789012345678901234567890123\0", 
+        SALT_LEN+1);
 
     fprintf(stdout, "Using salt: %s\n", user_salt);
 
+    network_socket = compsys_helper_open_clientfd(my_ip, my_port);
     // The following function calls have been added as a structure to a 
     // potential solution demonstrating the core functionality. Feel free to 
     // add, remove or otherwise edit. Note that if you are creating a system 
@@ -209,7 +235,7 @@ int main(int argc, char **argv)
     // Retrieve the larger file, that requires support for blocked messages. As
     // handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
-    get_file(username, password, user_salt, "hamlet.txt");
-
+    //get_file(username, password, user_salt, "hamlet.txt");
+    close(network_socket);
     exit(EXIT_SUCCESS);
 }

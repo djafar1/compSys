@@ -122,34 +122,18 @@ void register_user(char* username, char* password, char* salt)
  */
 void get_file(char* username, char* password, char* salt, char* to_get)
 {
-    int casc_file_size;
+    Request_t request;
+    // Set the username in the request header
+    strncpy(request.header.username, username, USERNAME_LEN - 1);
+    request.header.username[USERNAME_LEN - 1] = '\0';
+    strncpy(request.payload, to_get, strlen(to_get)-1 );
+    // Generate the signature and set it in the request header
+    get_signature(password, salt, &(request.header.salted_and_hashed));
+    // Set the length in the request header
+    request.header.length = sizeof(Request_t);
+    write(network_socket, &request, request.header.length);
+    //compsys_helper_open_listenfd() måske vi skal bruge den her.
 
-    FILE* fp = fopen("file_name", "r");
-
-    if (fp == NULL){
-        printf("Failed to open source\n");
-        return;
-    }
-    fseek(fp, 0L, SEEK_END);
-    casc_file_size = ftell(fp);
-    fseek(fp, 0L, SEEK_SET);
-
-    char buffer[casc_file_size];
-    //Reads the contents of file into the buffer
-    fread(buffer, 1, casc_file_size, fp);
-
-    while (casc_file_size > 0) {  /* Refill if buf is empty */
-        int bytes_read = fread(buffer, 1, casc_file_size, fp);
-        if (bytes_read < 0) {
-            if (errno != EINTR) /* Interrupted by sig handler return */
-                return;
-        }
-        else if (bytes_read == 0)  /* EOF */
-            return 0;
-        else
-            casc_file_size -= bytes_read; /* Reset buffer ptr */
-    }
-    fclose(fp);
 }
 
 int main(int argc, char **argv)

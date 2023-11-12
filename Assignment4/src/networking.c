@@ -122,9 +122,34 @@ void register_user(char* username, char* password, char* salt)
  */
 void get_file(char* username, char* password, char* salt, char* to_get)
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
-    assert(0);
+    int casc_file_size;
+
+    FILE* fp = fopen("file_name", "r");
+
+    if (fp == NULL){
+        printf("Failed to open source\n");
+        return;
+    }
+    fseek(fp, 0L, SEEK_END);
+    casc_file_size = ftell(fp);
+    fseek(fp, 0L, SEEK_SET);
+
+    char buffer[casc_file_size];
+    //Reads the contents of file into the buffer
+    fread(buffer, 1, casc_file_size, fp);
+
+    while (casc_file_size > 0) {  /* Refill if buf is empty */
+        int bytes_read = fread(buffer, 1, casc_file_size, fp);
+        if (bytes_read < 0) {
+            if (errno != EINTR) /* Interrupted by sig handler return */
+                return;
+        }
+        else if (bytes_read == 0)  /* EOF */
+            return 0;
+        else
+            casc_file_size -= bytes_read; /* Reset buffer ptr */
+    }
+    fclose(fp);
 }
 
 int main(int argc, char **argv)

@@ -87,11 +87,12 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
     get_data_sha(to_hash, hash, strlen(to_hash), SHA256_HASH_SIZE);
     // You can use this to confirm that you are hashing what you think you are
     // hashing
+    /*
     for (uint8_t i=0; i<strlen(to_hash); i++)
     {
         printf("[%c]", to_hash[i]);
     }
-    printf("\n");
+    printf("\n");*/
 }
 
 /*
@@ -112,7 +113,7 @@ void register_user(char* username, char* password, char* salt)
     request.length = sizeof(RequestHeader_t);
 
     // Send the request to the server
-    write(network_socket, &request, request.length);
+    write(network_socket, &request, SHA256_HASH_SIZE);
 }
 
 /*
@@ -132,7 +133,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     // Set the length in the request header
     request.header.length = sizeof(Request_t);
     write(network_socket, &request, request.header.length);
-    //compsys_helper_open_listenfd() måske vi skal bruge den her.
+    // compsys_helper_open_listenfd() måske vi skal bruge den her.
 
 }
 
@@ -224,7 +225,7 @@ int main(int argc, char **argv)
 
     fprintf(stdout, "Using salt: %s\n", user_salt);
 
-    network_socket = compsys_helper_open_clientfd(my_ip, my_port);
+    network_socket = compsys_helper_open_clientfd(server_ip, server_port);
     // The following function calls have been added as a structure to a 
     // potential solution demonstrating the core functionality. Feel free to 
     // add, remove or otherwise edit. Note that if you are creating a system 
@@ -239,7 +240,7 @@ int main(int argc, char **argv)
     // Retrieve the smaller file, that doesn't not require support for blocks. 
     // As handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
-    get_file(username, password, user_salt, "tiny.txt");
+    //get_file(username, password, user_salt, "tiny.txt");
 
     // Retrieve the larger file, that requires support for blocked messages. As
     // handed out, this line will run every time this client starts, and so 

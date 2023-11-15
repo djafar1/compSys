@@ -101,6 +101,8 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
  */
 void register_user(char* username, char* password, char* salt)
 {
+    char buf[MAXLINE];
+    compsys_helper_state_t state;
     hashdata_t hash;
     get_signature(password, salt, hash);
     RequestHeader_t request;
@@ -114,9 +116,18 @@ void register_user(char* username, char* password, char* salt)
     //request.salted_and_hashed[SHA256_HASH_SIZE] = '\0';
 
     request.length = 0;
-
+    
+    compsys_helper_readinitb(&state, network_socket);
     // Send the request to the server
     compsys_helper_writen(network_socket, &request, sizeof(request));
+
+    compsys_helper_readnb(&state, buf, 4);
+
+    uint32_t request_length = ntohl(*(uint32_t*)&buf);
+    compsys_helper_readnb(&state, buf, request_length);
+    char message[request_length];
+    memcpy(message, buf, request_length);
+    printf("S - Recieved message: %s\n", message);
 }
 
 /*

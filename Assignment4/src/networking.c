@@ -101,19 +101,22 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
  */
 void register_user(char* username, char* password, char* salt)
 {
+    hashdata_t hash;
+    get_signature(password, salt, hash);
     RequestHeader_t request;
-    // Set the username in the request header
-    strncpy(request.username, username, USERNAME_LEN - 1);
-    request.username[USERNAME_LEN - 1] = '\0';
 
-    // Generate the signature and set it in the request header
-    get_signature(password, salt, &(request.salted_and_hashed));
+    memcpy(request.username, username, USERNAME_LEN);
+    // Alternative: strncpy(request.username, username, USERNAME_LEN);
+    //request.username[USERNAME_LEN] = '\0';
 
-    // Set the length in the request header
-    request.length = sizeof(RequestHeader_t);
+    memcpy(request.salted_and_hashed, hash, SHA256_HASH_SIZE);
+    //Alternative: strncpy(request.salted_and_hashed, hash, SHA256_HASH_SIZE);
+    //request.salted_and_hashed[SHA256_HASH_SIZE] = '\0';
+
+    request.length = 0;
 
     // Send the request to the server
-    write(network_socket, &request, SHA256_HASH_SIZE);
+    compsys_helper_writen(network_socket, &request, sizeof(request));
 }
 
 /*
@@ -132,7 +135,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     get_signature(password, salt, &(request.header.salted_and_hashed));
     // Set the length in the request header
     request.header.length = sizeof(Request_t);
-    write(network_socket, &request, request.header.length);
+    write(network_socket, &request, SHA256_HASH_SIZE);
     // compsys_helper_open_listenfd() måske vi skal bruge den her.
 
 }

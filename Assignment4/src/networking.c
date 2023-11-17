@@ -104,31 +104,74 @@ void register_user(char* username, char* password, char* salt)
     compsys_helper_state_t state;
     hashdata_t hash;
     get_signature(password, salt, hash);
-    RequestHeader_t request;
+    RequestHeader_t header;
 
-    memcpy(request.username, username, USERNAME_LEN);
+    memcpy(header.username, username, USERNAME_LEN);
     // Alternative: strncpy(request.username, username, USERNAME_LEN);
     //request.username[USERNAME_LEN] = '\0';
 
-    memcpy(request.salted_and_hashed, hash, SHA256_HASH_SIZE);
+    memcpy(header.salted_and_hashed, hash, SHA256_HASH_SIZE);
     //Alternative: strncpy(request.salted_and_hashed, hash, SHA256_HASH_SIZE);
     //request.salted_and_hashed[SHA256_HASH_SIZE] = '\0';
 
-    request.length = 0;
-    
+    // the lenght of the payload is 0, since we are not sending anything.
+    header.length = 0;
+
     compsys_helper_readinitb(&state, network_socket);
-    // Send the request to the server
-    compsys_helper_writen(network_socket, &request, REQUEST_HEADER_LEN);
+    // Send the request to the server about registering the username and signature
+    compsys_helper_writen(network_socket, &header, REQUEST_HEADER_LEN);
 
-    //buffer to read n bytes.
-    char buf[MAXLINE];
+    //reading response from server
 
-    // Read n bytes into the buffer.
-    compsys_helper_readnb(&state, buf, MAX_MSG_LEN);
+    //responseheader from server, with the size of responseheaderlen
 
-    // Printing the response from the server and plus response header len,
-    // we want to adjust the pointer to only print the message and not header.
-    printf("%s \n", (buf + RESPONSE_HEADER_LEN));
+    char responseHeader[RESPONSE_HEADER_LEN];
+    // Read response from server, into the responseHeader, which would be the lenght of Response_header_len
+    // So basically we only read the first 4+4+4+4+32+32, which is the responseheader.
+    compsys_helper_readnb(&state, responseHeader, RESPONSE_HEADER_LEN);
+
+    //Creating a uint32_t which holds the lenght of the payload
+    uint32_t payloadLenght;
+    //Putting the first four bytes into the payloadLenght, since we know that the first four bytes tells us the lenght of the payload.
+    memcpy(&payloadLenght, responseHeader, 4);
+    //Translates an unsigned long integer(network byte order) into host byte order.
+    payloadLenght = ntohl(payloadLenght);
+
+    //Making a new buffer, of size payloadlenght
+    char payload[payloadLenght+1];
+
+    //Reading payload from the server using the lenght, into the buffer payload.
+    compsys_helper_readnb(&state, payload, payloadLenght);
+
+    //Setting last character to null byte
+    payload[payloadLenght] = '\0';
+
+    //Printing it the payload.
+    printf("%s\n", payload);
+
+    //Tryna match the two hashes.
+    // VIRKER IKKE PRØVER AT TAGE HASH FRA RESPONSE HEADER OG LAVE HASH AF PAYLOAD OG SAMMENLIGNE
+    // MEN DE ER VIDT FORSKELLIGE :(, DET SKAL DU FIKSE FELICIA
+    /*
+    hashdata_t totalHash;
+    memcpy(&totalHash, responseHeader + 58, sizeof(hashdata_t));
+    hashdata_t hashofpayload;
+    get_data_sha(payload-1, hashofpayload, payloadLenght, SHA256_HASH_SIZE);
+    hashofpayload[SHA256_HASH_SIZE] = '\0';
+    printf("Total Hash (UTF-8): ");
+    for (int i = 0; i < SHA256_HASH_SIZE; i++) {
+        printf("%02x", totalHash[i]);
+    }
+    printf("\n");
+
+    printf("Hash of Payload (UTF-8): ");
+    for (int i = 0; i < SHA256_HASH_SIZE; i++) {
+        printf("%02x", hashofpayload[i]);
+    }
+    printf("\n");
+    printf("Length of Total Hash: %lu\n", sizeof(totalHash));
+    printf("Length of Hash of Payload: %lu\n", strlen(hashofpayload));
+    */
 }
 
 /*
@@ -138,17 +181,16 @@ void register_user(char* username, char* password, char* salt)
  */
 void get_file(char* username, char* password, char* salt, char* to_get)
 {
+    compsys_helper_state_t state;
+    hashdata_t hash;
+    get_signature(password, salt, hash);
     Request_t request;
-    // Set the username in the request header
-    strncpy(request.header.username, username, USERNAME_LEN - 1);
-    request.header.username[USERNAME_LEN - 1] = '\0';
-    strncpy(request.payload, to_get, strlen(to_get)-1 );
-    // Generate the signature and set it in the request header
-    get_signature(password, salt, &(request.header.salted_and_hashed));
-    // Set the length in the request header
-    request.header.length = sizeof(Request_t);
-    write(network_socket, &request, SHA256_HASH_SIZE);
-    // compsys_helper_open_listenfd() måske vi skal bruge den her.
+    strncpy(request.header.username, username, USERNAME_LEN);
+    memcpy(request.header.salted_and_hashed, hash, SHA256_HASH_SIZE);
+    request.header.length = 2147483648;
+    // hostbyte order til netwrok byte order htonl, ntohl
+    strncpy(request.payload, to_get, PATH_LEN);
+    compsys_helper_writen(network_socket, &request, sizeof(Request_t));
 
 }
 

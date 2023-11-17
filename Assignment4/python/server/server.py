@@ -83,6 +83,9 @@ class RequestHandler(socketserver.StreamRequestHandler):
                     "given length"
                 )
 
+            print(len(request))
+            print("\n")
+            print(request_length)
             # Determine how to process request
             if request_length == 0:
                 self._register_new_user(username, signature)

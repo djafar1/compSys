@@ -80,6 +80,7 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
     char to_hash[strlen(password) + strlen(salt)];
+
     // TODO Put some code in here so that to_hash contains the password and 
     // salt and is then hashed
     strcpy(to_hash, password);
@@ -187,11 +188,19 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     Request_t request;
     strncpy(request.header.username, username, USERNAME_LEN);
     memcpy(request.header.salted_and_hashed, hash, SHA256_HASH_SIZE);
-    request.header.length = 2147483648;
     // hostbyte order til netwrok byte order htonl, ntohl
+    request.header.length = htonl(strlen(to_get)); 
     strncpy(request.payload, to_get, PATH_LEN);
-    compsys_helper_writen(network_socket, &request, sizeof(Request_t));
 
+    compsys_helper_readinitb(&state, network_socket);
+
+    compsys_helper_writen(network_socket, &request, sizeof(Request_t));
+    // frkert approach
+    char buffer[MAX_MSG_LEN];
+    // forkert approach
+    compsys_helper_readnb(&state, buffer, MAX_MSG_LEN);
+    // nu printer vi hvad filen, siger, det er fordi den sender det som en block, men større filer er vi nød til at gøre andereldes
+    printf("%s \n", (buffer + RESPONSE_HEADER_LEN));
 }
 
 int main(int argc, char **argv)
@@ -292,12 +301,12 @@ int main(int argc, char **argv)
     // Register the given user. As handed out, this line will run every time 
     // this client starts, and so should be removed if user interaction is 
     // added
-    register_user(username, password, user_salt);
+    //register_user(username, password, user_salt);
 
     // Retrieve the smaller file, that doesn't not require support for blocks. 
     // As handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
-    //get_file(username, password, user_salt, "tiny.txt");
+    get_file(username, password, user_salt, "tiny.txt");
 
     // Retrieve the larger file, that requires support for blocked messages. As
     // handed out, this line will run every time this client starts, and so 

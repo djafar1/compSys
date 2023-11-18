@@ -300,7 +300,8 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     close(network_socket);
 }
 
-void generate_salt_and_save(const char* username, char* user_salt){
+void generate_salt_and_save(const char* username, char* user_salt)
+{
     //Randomly generate a salt for new users.
     srand(time(0));
     for (int i=0; i<SALT_LEN; i++)
@@ -321,12 +322,32 @@ void generate_salt_and_save(const char* username, char* user_salt){
     fclose(file);
 }
 
-void check_for_existing_salt(const char* username, char* user_salt){
-// BASICALLY CHECK FOR EXISTING SALT IF NOT THEN GENERATVE_SALT_AND_SAVE
+void check_for_existing_salt(const char* username, char* user_salt)
+{
+    //Opening file 
+    FILE* file = fopen(SALT_STORAGE, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+    // Defining variables to store the username and salt read from file temporarily.
+    char saved_username[USERNAME_LEN];
+    char saved_salt[SALT_LEN + 1];
 
-// so if exists do nothing and return with that exact same salt
-
-// if do not exist generatve new salt.
+    // Using fscanf to read line by line in the file, 
+    // Reading at most the lenght of username 16, and salt 64.
+    while (fscanf(file, "%16s %64s", saved_username, saved_salt) == 2) {
+        // Check if the username in file matches the username typed
+        if (strcmp(username, saved_username) == 0) {
+            // If it matches update value of user_salt with storaged salt.
+            strcpy(user_salt, saved_salt);
+            fclose(file);
+            return;
+        }
+    }
+    // If no match was found for the username in storage, then generate new salt for that username
+    fclose(file);
+    generate_salt_and_save(username, user_salt);
 }
 
 int main(int argc, char **argv)
@@ -406,9 +427,8 @@ int main(int argc, char **argv)
     // repeatedly test the same user credentials by using the hard coded value
     // below instead, and commenting out this randomly generating section.
     
-    // IT SHOULD
-    generate_salt_and_save(username, user_salt);
-    fprintf(stdout, "Using salt: %s\n", user_salt);
+    check_for_existing_salt(username, user_salt);
+    printf("Using salt: %s\n", user_salt);
 
 
     /*strncpy(user_salt, 

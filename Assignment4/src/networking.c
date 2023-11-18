@@ -99,11 +99,11 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
 /*
 * Easier to decode the response header
 */
-void decoding_response_header(char* responseHeader, uint32_t* payloadLenght, uint32_t* statusCode, uint32_t* blockNumber, 
+void decoding_response_header(char* responseHeader, uint32_t* payloadLength, uint32_t* statusCode, uint32_t* blockNumber, 
 uint32_t* blockCount, hashdata_t blockHash, hashdata_t totalHash)
 {
-    memcpy(payloadLenght, responseHeader, 4);
-    *payloadLenght = ntohl(*payloadLenght);
+    memcpy(payloadLength, responseHeader, 4);
+    *payloadLength = ntohl(*payloadLength);
     memcpy(statusCode, responseHeader+4, 4);
     *statusCode = ntohl(*statusCode);
     memcpy(blockNumber, responseHeader+8, 4);
@@ -115,35 +115,36 @@ uint32_t* blockCount, hashdata_t blockHash, hashdata_t totalHash)
 }
 
 /*
+ * Making request_t struct to send to server. 
+ */
+Request_t get_request(char* username, char* password, char* salt, char* to_get){
+    hashdata_t hash;
+    get_signature(password, salt, hash);
+    Request_t request;
+    strncpy(request.header.username, username, USERNAME_LEN);
+    memcpy(request.header.salted_and_hashed, hash, SHA256_HASH_SIZE);
+    request.header.length = htonl(strlen(to_get));
+    strncpy(request.payload, to_get, PATH_LEN);
+    return request;
+}
+/*
  * Register a new user with a server by sending the username and signature to 
  * the server
  */
 void register_user(char* username, char* password, char* salt)
 {
     compsys_helper_state_t state;
-    hashdata_t hash;
-    get_signature(password, salt, hash);
-    RequestHeader_t header;
+    Request_t request; 
+    request = get_request(username, password, salt, "");
 
-    memcpy(header.username, username, USERNAME_LEN);
-    // Alternative: strncpy(request.username, username, USERNAME_LEN);
-    //request.username[USERNAME_LEN] = '\0';
-
-    memcpy(header.salted_and_hashed, hash, SHA256_HASH_SIZE);
-    //Alternative: strncpy(request.salted_and_hashed, hash, SHA256_HASH_SIZE);
-    //request.salted_and_hashed[SHA256_HASH_SIZE] = '\0';
-
-    // the lenght of the payload is 0, since we are not sending anything.
-    header.length = 0;
-
+    // Open the network connection
+    network_socket = compsys_helper_open_clientfd(server_ip, server_port);
     compsys_helper_readinitb(&state, network_socket);
     // Send the request to the server about registering the username and signature
-    compsys_helper_writen(network_socket, &header, REQUEST_HEADER_LEN);
+    compsys_helper_writen(network_socket, &request, REQUEST_HEADER_LEN);
 
     //reading response from server
-
     //responseheader from server, with the size of responseheaderlen
-
     char responseHeader[RESPONSE_HEADER_LEN];
     // Read response from server, into the responseHeader, which would be the lenght of Response_header_len
     // So basically we only read the first 4+4+4+4+32+32, which is the responseheader.
@@ -193,6 +194,8 @@ void register_user(char* username, char* password, char* salt)
     printf("\n");
     printf("Length of Total Hash: %lu\n", sizeof(totalHash));
     printf("Length of Hash of Payload: %lu\n", sizeof(hashofpayload));*/
+    // Close the network connection
+    close(network_socket);
 }
 
 /*
@@ -203,35 +206,76 @@ void register_user(char* username, char* password, char* salt)
 void get_file(char* username, char* password, char* salt, char* to_get)
 {
     compsys_helper_state_t state;
-    hashdata_t hash;
-    get_signature(password, salt, hash);
     Request_t request;
-    strncpy(request.header.username, username, USERNAME_LEN);
-    memcpy(request.header.salted_and_hashed, hash, SHA256_HASH_SIZE);
-    // hostbyte order til netwrok byte order htonl, ntohl
-    request.header.length = htonl(strlen(to_get)); 
-    strncpy(request.payload, to_get, PATH_LEN);
+    request = get_request(username, password, salt, to_get);
+    // Open the network connection
+    network_socket = compsys_helper_open_clientfd(server_ip, server_port);
     compsys_helper_readinitb(&state, network_socket);
     compsys_helper_writen(network_socket, &request, sizeof(Request_t));
-    //Buffer for responseHeader
+
+    // Buffer for responseHeader
     char responseHeader[RESPONSE_HEADER_LEN];
-    //Reading the responseHeader into the buffer
+    // Reading the responseHeader into the buffer
     compsys_helper_readnb(&state, responseHeader, RESPONSE_HEADER_LEN);
-    // We declare the variables which will store the 
+
+    // We declare the variables which will store the
     // different decoded information from the response header.
-    uint32_t payloadLenght, statusCode, blockNumber, blockCount;
+    uint32_t payloadLength, statusCode, blockNumber, blockCount;
     hashdata_t blockHash, totalHash;
     // Decoding the response header using our function, and store it in the variables.
-    decoding_response_header(responseHeader, &payloadLenght, &statusCode,
+    decoding_response_header(responseHeader, &payloadLength, &statusCode,
         &blockNumber, &blockCount, blockHash, totalHash);
+
     FILE* file = fopen(to_get, "wb"); // Open the file for writing in binary mode
     if (file == NULL) {
         perror("Error opening file");
         exit(EXIT_FAILURE);
     }
 
-    //HERE WE NEED SOME CODE TO TAKE THE PAYLOAD INTO THE FILE
-    ////
+    // Make an array to store the blocks in, later used to write it.
+    char** blocks = malloc(blockCount * sizeof(char*));
+    if (blocks == NULL) {
+        perror("Error allocating memory for blocks");
+        exit(EXIT_FAILURE);
+    }
+
+    // Since we need to read th
+    char payload1[payloadLength + 1];
+    compsys_helper_readnb(&state, payload1, payloadLength);
+    blocks[blockNumber] = malloc(payloadLength);
+    // Copy the payload to the block
+    payload1[payloadLength] = '\0';
+    strcpy(blocks[blockNumber], payload1);
+
+    // Read each subsequent block and store it in the array
+    for (size_t i = 0; i < blockCount - 1; ++i) {
+        compsys_helper_readnb(&state, responseHeader, RESPONSE_HEADER_LEN);
+        decoding_response_header(responseHeader, &payloadLength, &statusCode,
+            &blockNumber, &blockCount, blockHash, totalHash);
+        char payload[payloadLength + 1];
+        compsys_helper_readnb(&state, payload, payloadLength);
+
+        // Allocate memory for the block
+        blocks[blockNumber] = malloc(payloadLength);
+        payload[payloadLength] = '\0';
+
+        if (blocks[blockNumber] == NULL) {
+            perror("Error allocating memory for block");
+            exit(EXIT_FAILURE);
+        }
+
+        // Copy the payload to the block using the index of the blockNumber.
+        strcpy(blocks[blockNumber], payload);
+    }
+
+    // Write blocks to the file in the correct order
+    // Clean up: free allocated memory for blocks
+
+    for (size_t i = 0; i < blockCount; ++i) {
+        size_t blockLength = strlen(blocks[i]);
+        fwrite(blocks[i], sizeof(char), blockLength, file);
+        free(blocks[i]);
+    }
 
     // Close the file
     fclose(file);
@@ -239,6 +283,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     // Close the network connection
     close(network_socket);
 }
+
 
 int main(int argc, char **argv)
 {
@@ -328,7 +373,6 @@ int main(int argc, char **argv)
 
     fprintf(stdout, "Using salt: %s\n", user_salt);
 
-    network_socket = compsys_helper_open_clientfd(server_ip, server_port);
     // The following function calls have been added as a structure to a 
     // potential solution demonstrating the core functionality. Feel free to 
     // add, remove or otherwise edit. Note that if you are creating a system 
@@ -338,16 +382,17 @@ int main(int argc, char **argv)
     // Register the given user. As handed out, this line will run every time 
     // this client starts, and so should be removed if user interaction is 
     // added
-    //register_user(username, password, user_salt);
+    register_user(username, password, user_salt);
 
     // Retrieve the smaller file, that doesn't not require support for blocks. 
     // As handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
-    get_file(username, password, user_salt, "tiny.txt");
+    //get_file(username, password, user_salt, "tiny.txt");
 
     // Retrieve the larger file, that requires support for blocked messages. As
     // handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
     //get_file(username, password, user_salt, "hamlet.txt");
+
     exit(EXIT_SUCCESS);
 }

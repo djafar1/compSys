@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef __APPLE__
 #include "./endian.h"
@@ -13,6 +14,8 @@
 
 #include "./networking.h"
 #include "./sha256.h"
+
+#define SALT_STORAGE "salt_storage.txt"
 
 char server_ip[IP_LEN];
 char server_port[PORT_LEN];
@@ -136,16 +139,18 @@ void register_user(char* username, char* password, char* salt)
     compsys_helper_state_t state;
     Request_t request; 
     request = get_request(username, password, salt, "");
-
     // Open the network connection
     network_socket = compsys_helper_open_clientfd(server_ip, server_port);
+
     compsys_helper_readinitb(&state, network_socket);
+
     // Send the request to the server about registering the username and signature
     compsys_helper_writen(network_socket, &request, REQUEST_HEADER_LEN);
 
     //reading response from server
     //responseheader from server, with the size of responseheaderlen
     char responseHeader[RESPONSE_HEADER_LEN];
+
     // Read response from server, into the responseHeader, which would be the lenght of Response_header_len
     // So basically we only read the first 4+4+4+4+32+32, which is the responseheader.
     compsys_helper_readnb(&state, responseHeader, RESPONSE_HEADER_LEN);
@@ -235,7 +240,8 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         exit(EXIT_FAILURE);
     }
 
-    FILE* file = fopen(to_get, "wb"); // Open the file for writing in binary mode
+    // Making a new file and opening it to write in binary.
+    FILE* file = fopen(to_get, "wb");
     if (file == NULL) {
         perror("Error opening file");
         exit(EXIT_FAILURE);
@@ -247,15 +253,16 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         perror("Error allocating memory for blocks");
         exit(EXIT_FAILURE);
     }
-    printf("%d \n", statusCode);
 
-    // Since we need to read th
+    // Since we need to read the response header, to determine the amount of blocks
+    // 
     char payload1[payloadLength + 1];
     compsys_helper_readnb(&state, payload1, payloadLength);
     blocks[blockNumber] = malloc(payloadLength);
     // Copy the payload to the block
     payload1[payloadLength] = '\0';
     strcpy(blocks[blockNumber], payload1);
+
 
     // Read each subsequent block and store it in the array
     for (size_t i = 0; i < blockCount - 1; ++i) {
@@ -286,7 +293,6 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         fwrite(blocks[i], sizeof(char), blockLength, file);
         free(blocks[i]);
     }
-
     // Close the file
     fclose(file);
     printf("File '%s' downloaded successfully.\n", to_get);
@@ -294,6 +300,34 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     close(network_socket);
 }
 
+void generate_salt_and_save(const char* username, char* user_salt){
+    //Randomly generate a salt for new users.
+    srand(time(0));
+    for (int i=0; i<SALT_LEN; i++)
+    {  
+        user_salt[i] = 'a' + (rand() % 26);
+    }
+    user_salt[SALT_LEN] = '\0';
+    //Opening file with mode "a" to append at the end of file.
+    FILE* file = fopen(SALT_STORAGE, "a");
+    if (file == NULL) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+    // Write string with username and user_salt to file/stream
+    fprintf(file, "%s %s\n", username, user_salt);
+
+    //Close file
+    fclose(file);
+}
+
+void check_for_existing_salt(const char* username, char* user_salt){
+// BASICALLY CHECK FOR EXISTING SALT IF NOT THEN GENERATVE_SALT_AND_SAVE
+
+// so if exists do nothing and return with that exact same salt
+
+// if do not exist generatve new salt.
+}
 
 int main(int argc, char **argv)
 {
@@ -358,7 +392,7 @@ int main(int argc, char **argv)
     {
         username[i] = '\0';
     }
- 
+    
     fprintf(stdout, "Enter your password to proceed: ");
     scanf("%16s", password);
     while ((c = getchar()) != '\n' && c != EOF);
@@ -371,17 +405,18 @@ int main(int argc, char **argv)
     // Note that a random salt should be used, but you may find it easier to
     // repeatedly test the same user credentials by using the hard coded value
     // below instead, and commenting out this randomly generating section.
-    /*
-    for (int i=0; i<SALT_LEN; i++)
-    {
-        user_salt[i] = 'a' + (random() % 26);
-    }
-    user_salt[SALT_LEN] = '\0';*/
-    strncpy(user_salt, 
+    
+    // IT SHOULD
+    generate_salt_and_save(username, user_salt);
+    fprintf(stdout, "Using salt: %s\n", user_salt);
+
+
+    /*strncpy(user_salt, 
         "0123456789012345678901234567890123456789012345678901234567890123\0", 
         SALT_LEN+1);
 
-    fprintf(stdout, "Using salt: %s\n", user_salt);
+    fprintf(stdout, "Using salt: %s\n", user_salt);*/
+
 
     // The following function calls have been added as a structure to a 
     // potential solution demonstrating the core functionality. Feel free to 
@@ -397,7 +432,7 @@ int main(int argc, char **argv)
     // Retrieve the smaller file, that doesn't not require support for blocks. 
     // As handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
-    get_file(username, password, user_salt, "tiny.txt");
+    //get_file(username, password, user_salt, "tiny.txt");
 
     // Retrieve the larger file, that requires support for blocked messages. As
     // handed out, this line will run every time this client starts, and so 

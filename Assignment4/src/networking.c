@@ -226,6 +226,15 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     decoding_response_header(responseHeader, &payloadLength, &statusCode,
         &blockNumber, &blockCount, blockHash, totalHash);
 
+    // If the statuscode from the responseheader is not okay, print payload and exit.
+    if (statusCode != 1){
+        char payload[payloadLength+1];
+        compsys_helper_readnb(&state, payload, payloadLength);
+        payload[payloadLength] = '\0';
+        printf("%s\n", payload);
+        exit(EXIT_FAILURE);
+    }
+
     FILE* file = fopen(to_get, "wb"); // Open the file for writing in binary mode
     if (file == NULL) {
         perror("Error opening file");
@@ -238,6 +247,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         perror("Error allocating memory for blocks");
         exit(EXIT_FAILURE);
     }
+    printf("%d \n", statusCode);
 
     // Since we need to read th
     char payload1[payloadLength + 1];
@@ -382,12 +392,12 @@ int main(int argc, char **argv)
     // Register the given user. As handed out, this line will run every time 
     // this client starts, and so should be removed if user interaction is 
     // added
-    register_user(username, password, user_salt);
+    //register_user(username, password, user_salt);
 
     // Retrieve the smaller file, that doesn't not require support for blocks. 
     // As handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
-    //get_file(username, password, user_salt, "tiny.txt");
+    get_file(username, password, user_salt, "tiny.txt");
 
     // Retrieve the larger file, that requires support for blocked messages. As
     // handed out, this line will run every time this client starts, and so 

@@ -97,6 +97,24 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
 }
 
 /*
+* Easier to decode the response header
+*/
+void decoding_response_header(char* responseHeader, uint32_t* payloadLenght, uint32_t* statusCode, uint32_t* blockNumber, 
+uint32_t* blockCount, hashdata_t blockHash, hashdata_t totalHash)
+{
+    memcpy(payloadLenght, responseHeader, 4);
+    *payloadLenght = ntohl(*payloadLenght);
+    memcpy(statusCode, responseHeader+4, 4);
+    *statusCode = ntohl(*statusCode);
+    memcpy(blockNumber, responseHeader+8, 4);
+    *blockNumber = ntohl(*blockNumber);
+    memcpy(blockCount, responseHeader+12, 4);
+    *blockCount = ntohl(*blockCount);
+    memcpy(blockHash, responseHeader + 16, sizeof(hashdata_t));
+    memcpy(totalHash, responseHeader + 48, sizeof(hashdata_t));
+}
+
+/*
  * Register a new user with a server by sending the username and signature to 
  * the server
  */
@@ -131,12 +149,14 @@ void register_user(char* username, char* password, char* salt)
     // So basically we only read the first 4+4+4+4+32+32, which is the responseheader.
     compsys_helper_readnb(&state, responseHeader, RESPONSE_HEADER_LEN);
 
-    //Creating a uint32_t which holds the lenght of the payload
-    uint32_t payloadLenght;
-    //Putting the first four bytes into the payloadLenght, since we know that the first four bytes tells us the lenght of the payload.
-    memcpy(&payloadLenght, responseHeader, 4);
-    //Translates an unsigned long integer(network byte order) into host byte order.
-    payloadLenght = ntohl(payloadLenght);
+    // We declare the variables which will store the 
+    // different decoded information from the response header.
+    uint32_t payloadLenght, statusCode, blockNumber, blockCount;
+    hashdata_t blockHash, totalHash;
+
+    // Decoding the response header using our function, and store it in the variables.
+    decoding_response_header(responseHeader, &payloadLenght, &statusCode,
+        &blockNumber, &blockCount, blockHash, totalHash);
 
     //Making a new buffer, of size payloadlenght
     char payload[payloadLenght+1];
@@ -153,11 +173,12 @@ void register_user(char* username, char* password, char* salt)
     //Tryna match the two hashes.
     // VIRKER IKKE PRØVER AT TAGE HASH FRA RESPONSE HEADER OG LAVE HASH AF PAYLOAD OG SAMMENLIGNE
     // MEN DE ER VIDT FORSKELLIGE :(, DET SKAL DU FIKSE FELICIA
+    // MÅSKE BEDRE APPROACH VIL AT LAVE EN FUNCTION DER TAGER HASH OG PAYLOAD OF SAMMENLIGNER :)
     /*
     hashdata_t totalHash;
-    memcpy(&totalHash, responseHeader + 58, sizeof(hashdata_t));
+    memcpy(&totalHash, responseHeader + 48, sizeof(hashdata_t));
     hashdata_t hashofpayload;
-    get_data_sha(payload-1, hashofpayload, payloadLenght, SHA256_HASH_SIZE);
+    get_data_sha(payload, hashofpayload, payloadLenght, SHA256_HASH_SIZE);
     hashofpayload[SHA256_HASH_SIZE] = '\0';
     printf("Total Hash (UTF-8): ");
     for (int i = 0; i < SHA256_HASH_SIZE; i++) {
@@ -171,8 +192,7 @@ void register_user(char* username, char* password, char* salt)
     }
     printf("\n");
     printf("Length of Total Hash: %lu\n", sizeof(totalHash));
-    printf("Length of Hash of Payload: %lu\n", strlen(hashofpayload));
-    */
+    printf("Length of Hash of Payload: %lu\n", sizeof(hashofpayload));*/
 }
 
 /*
@@ -191,16 +211,33 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     // hostbyte order til netwrok byte order htonl, ntohl
     request.header.length = htonl(strlen(to_get)); 
     strncpy(request.payload, to_get, PATH_LEN);
-
     compsys_helper_readinitb(&state, network_socket);
-
     compsys_helper_writen(network_socket, &request, sizeof(Request_t));
-    // frkert approach
-    char buffer[MAX_MSG_LEN];
-    // forkert approach
-    compsys_helper_readnb(&state, buffer, MAX_MSG_LEN);
-    // nu printer vi hvad filen, siger, det er fordi den sender det som en block, men større filer er vi nød til at gøre andereldes
-    printf("%s \n", (buffer + RESPONSE_HEADER_LEN));
+    //Buffer for responseHeader
+    char responseHeader[RESPONSE_HEADER_LEN];
+    //Reading the responseHeader into the buffer
+    compsys_helper_readnb(&state, responseHeader, RESPONSE_HEADER_LEN);
+    // We declare the variables which will store the 
+    // different decoded information from the response header.
+    uint32_t payloadLenght, statusCode, blockNumber, blockCount;
+    hashdata_t blockHash, totalHash;
+    // Decoding the response header using our function, and store it in the variables.
+    decoding_response_header(responseHeader, &payloadLenght, &statusCode,
+        &blockNumber, &blockCount, blockHash, totalHash);
+    FILE* file = fopen(to_get, "wb"); // Open the file for writing in binary mode
+    if (file == NULL) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    //HERE WE NEED SOME CODE TO TAKE THE PAYLOAD INTO THE FILE
+    ////
+
+    // Close the file
+    fclose(file);
+    printf("File '%s' downloaded successfully.\n", to_get);
+    // Close the network connection
+    close(network_socket);
 }
 
 int main(int argc, char **argv)
@@ -312,6 +349,5 @@ int main(int argc, char **argv)
     // handed out, this line will run every time this client starts, and so 
     // should be removed if user interaction is added
     //get_file(username, password, user_salt, "hamlet.txt");
-    close(network_socket);
     exit(EXIT_SUCCESS);
 }

@@ -236,6 +236,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         char payload[payloadLength+1];
         compsys_helper_readnb(&state, payload, payloadLength);
         payload[payloadLength] = '\0';
+        printf("Got unexpected status code: %d\n", statusCode);
         printf("%s\n", payload);
         exit(EXIT_FAILURE);
     }
@@ -295,7 +296,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     }
     // Close the file
     fclose(file);
-    printf("File '%s' downloaded successfully.\n", to_get);
+    printf("Retrieved data written to '%s'.\n", to_get);
     // Close the network connection
     close(network_socket);
 }
@@ -428,36 +429,21 @@ int main(int argc, char **argv)
     // below instead, and commenting out this randomly generating section.
     
     check_for_existing_salt(username, user_salt);
-    printf("Using salt: %s\n", user_salt);
 
+    register_user(username, password, user_salt);
 
-    /*strncpy(user_salt, 
-        "0123456789012345678901234567890123456789012345678901234567890123\0", 
-        SALT_LEN+1);
+    char to_get[PATH_LEN];
+    while (1){
+        fprintf(stdout, "Type the name of a file to be retrieved, or 'quit' to quit:\n");
+        scanf("%128s", to_get);
+        while ((c = getchar()) != '\n' && c != EOF);
+        if (strcmp(to_get, "quit") == 0){
+            break;
+        }
 
-    fprintf(stdout, "Using salt: %s\n", user_salt);*/
-
-
-    // The following function calls have been added as a structure to a 
-    // potential solution demonstrating the core functionality. Feel free to 
-    // add, remove or otherwise edit. Note that if you are creating a system 
-    // for user-interaction the following lines will almost certainly need to 
-    // be removed/altered.
-
-    // Register the given user. As handed out, this line will run every time 
-    // this client starts, and so should be removed if user interaction is 
-    // added
-    //register_user(username, password, user_salt);
-
-    // Retrieve the smaller file, that doesn't not require support for blocks. 
-    // As handed out, this line will run every time this client starts, and so 
-    // should be removed if user interaction is added
-    //get_file(username, password, user_salt, "tiny.txt");
-
-    // Retrieve the larger file, that requires support for blocked messages. As
-    // handed out, this line will run every time this client starts, and so 
-    // should be removed if user interaction is added
-    //get_file(username, password, user_salt, "hamlet.txt");
-
+        //Get a file from server by sending the username, signature and file path, that
+        //user typed in
+        get_file(username, password, user_salt, to_get);
+    }
     exit(EXIT_SUCCESS);
 }

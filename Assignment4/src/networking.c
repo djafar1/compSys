@@ -85,7 +85,7 @@ void get_signature(char* password, char* salt, hashdata_t* hash)
     char to_hash[strlen(password) + strlen(salt)];
     strcpy(to_hash, password);
     strcat(to_hash, salt);
-    get_data_sha(to_hash, hash, strlen(to_hash), SHA256_HASH_SIZE);
+    get_data_sha(to_hash, *hash, strlen(to_hash), SHA256_HASH_SIZE);
 }
 
 /*
@@ -111,7 +111,7 @@ uint32_t* blockCount, hashdata_t blockHash, hashdata_t totalHash)
  */
 Request_t get_request(char* username, char* password, char* salt, char* to_get){
     hashdata_t hash;
-    get_signature(password, salt, hash);
+    get_signature(password, salt, &hash);
     Request_t request;
     strncpy(request.header.username, username, USERNAME_LEN);
     memcpy(request.header.salted_and_hashed, hash, SHA256_HASH_SIZE);
@@ -324,7 +324,7 @@ void generate_salt_and_save(const char* username, char* user_salt)
     //Opening file with mode "a" to append at the end of file.
     FILE* file = fopen(SALT_STORAGE, "a");
     if (file == NULL) {
-        perror("Error opening file");
+        fprintf(stderr, "Error opening file\n");
         exit(EXIT_FAILURE);
     }
     // Write string with username and user_salt to file/stream
@@ -339,8 +339,17 @@ void check_for_existing_salt(const char* username, char* user_salt)
     //Opening file 
     FILE* file = fopen(SALT_STORAGE, "r");
     if (file == NULL) {
-        perror("Error opening file");
-        exit(EXIT_FAILURE);
+        //If can't open try to create a new file
+        file = fopen(SALT_STORAGE, "w");
+        if (file == NULL) {
+            fprintf(stderr, "Error creating file\n");
+            exit(EXIT_FAILURE);    
+        }       
+        fclose(file);
+        if (file == NULL){
+            fprintf(stderr, "Error opening file\n");
+            exit(EXIT_FAILURE);
+        }
     }
     // Defining variables to store the username and salt read from file temporarily.
     char saved_username[USERNAME_LEN];

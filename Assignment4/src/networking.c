@@ -125,8 +125,8 @@ Request_t get_request(char* username, char* password, char* salt, char* to_get){
 */
 int compare_block_hash(hashdata_t serverhash, char *payload){
     hashdata_t payloadhashed;
-    get_data_sha(payload, payloadhashed, strlen(payload), SHA256_HASH_SIZE);
-    payloadhashed[SHA256_HASH_SIZE] = '\0';
+    size_t payloadLength = strlen(payload);
+    get_data_sha(payload, payloadhashed, payloadLength, SHA256_HASH_SIZE);
     return memcmp(serverhash, payloadhashed, SHA256_HASH_SIZE);
 }
 /*
@@ -135,7 +135,6 @@ int compare_block_hash(hashdata_t serverhash, char *payload){
 int compare_file_hash(hashdata_t totalHash, char* to_get){
     hashdata_t filehashed;
     get_file_sha(to_get, filehashed, SHA256_HASH_SIZE);
-    filehashed[SHA256_HASH_SIZE] = '\0';
     return memcmp(totalHash, filehashed, SHA256_HASH_SIZE);
 }
 
@@ -259,10 +258,10 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     // We need to manuel write in the first payload into the array of blocks
     char payload1[payloadLength + 1];
     compsys_helper_readnb(&state, payload1, payloadLength);
-    blocks[blockNumber] = malloc(payloadLength);
+    blocks[blockNumber] = malloc(payloadLength + 1);
     // Copy the payload to the block
     payload1[payloadLength] = '\0';
-    strcpy(blocks[blockNumber], payload1);
+    memcpy(blocks[blockNumber], payload1, payloadLength + 1);
     // Compare hash from blockhash from respose header, with payload hashed.
     if (compare_block_hash(blockHash, blocks[blockNumber]) != 0){
         identicalhash = 1;
@@ -277,7 +276,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         compsys_helper_readnb(&state, payload, payloadLength);
 
         // Allocate memory for the block/payload
-        blocks[blockNumber] = malloc(payloadLength);
+        blocks[blockNumber] = malloc(payloadLength + 1);
         payload[payloadLength] = '\0';
 
         if (blocks[blockNumber] == NULL) {
@@ -286,7 +285,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         }
 
         // Copy the payload to the block using the index of the blockNumber.
-        strcpy(blocks[blockNumber], payload);
+        memcpy(blocks[blockNumber], payload, payloadLength + 1);
 
         // Comparing each hash from the blockhash and payload
         if (compare_block_hash(blockHash, blocks[blockNumber]) != 0){
@@ -302,6 +301,7 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         fwrite(blocks[i], sizeof(char), blockLength, file);
         free(blocks[i]);
     }
+    free(blocks);
     // Close the file
     fclose(file);
     printf("Retrieved data written to '%s'.\n", to_get);

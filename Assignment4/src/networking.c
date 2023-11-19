@@ -24,6 +24,7 @@ char my_port[PORT_LEN];
 
 int c;
 int network_socket;
+
 /*
  * Gets a sha256 hash of specified data, sourcedata. The hash itself is
  * placed into the given variable 'hash'. Any size can be created, but a
@@ -72,6 +73,7 @@ void get_file_sha(const char* sourcefile, hashdata_t hash, int size)
 
     get_data_sha(buffer, hash, casc_file_size, size);
 }
+
 /*
  * Combine a password and salt together and hash the result to form the 
  * 'signature'. The result should be written to the 'hash' variable. Note that 
@@ -80,23 +82,10 @@ void get_file_sha(const char* sourcefile, hashdata_t hash, int size)
  */
 void get_signature(char* password, char* salt, hashdata_t* hash)
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
     char to_hash[strlen(password) + strlen(salt)];
-
-    // TODO Put some code in here so that to_hash contains the password and 
-    // salt and is then hashed
     strcpy(to_hash, password);
     strcat(to_hash, salt);
     get_data_sha(to_hash, hash, strlen(to_hash), SHA256_HASH_SIZE);
-    // You can use this to confirm that you are hashing what you think you are
-    // hashing
-    /*
-    for (uint8_t i=0; i<strlen(to_hash); i++)
-    {
-        printf("[%c]", to_hash[i]);
-    }
-    printf("\n");*/
 }
 
 /*
@@ -130,6 +119,26 @@ Request_t get_request(char* username, char* password, char* salt, char* to_get){
     strncpy(request.payload, to_get, PATH_LEN);
     return request;
 }
+
+/*
+* Compare block hash from response header with payload hashed
+*/
+int compare_block_hash(hashdata_t serverhash, char *payload){
+    hashdata_t payloadhashed;
+    get_data_sha(payload, payloadhashed, strlen(payload), SHA256_HASH_SIZE);
+    payloadhashed[SHA256_HASH_SIZE] = '\0';
+    return memcmp(serverhash, payloadhashed, SHA256_HASH_SIZE);
+}
+/*
+* Compare total hash from response header with file hashed
+*/
+int compare_file_hash(hashdata_t totalHash, char* to_get){
+    hashdata_t filehashed;
+    get_file_sha(to_get, filehashed, SHA256_HASH_SIZE);
+    filehashed[SHA256_HASH_SIZE] = '\0';
+    return memcmp(totalHash, filehashed, SHA256_HASH_SIZE);
+}
+
 /*
  * Register a new user with a server by sending the username and signature to 
  * the server
@@ -138,7 +147,10 @@ void register_user(char* username, char* password, char* salt)
 {
     compsys_helper_state_t state;
     Request_t request; 
+
+    //Using get_request to make request_t struct
     request = get_request(username, password, salt, "");
+
     // Open the network connection
     network_socket = compsys_helper_open_clientfd(server_ip, server_port);
 
@@ -175,30 +187,12 @@ void register_user(char* username, char* password, char* salt)
 
     //Printing it the payload.
     printf("%s\n", payload);
-
-    //Tryna match the two hashes.
-    // VIRKER IKKE PRØVER AT TAGE HASH FRA RESPONSE HEADER OG LAVE HASH AF PAYLOAD OG SAMMENLIGNE
-    // MEN DE ER VIDT FORSKELLIGE :(, DET SKAL DU FIKSE FELICIA
-    // MÅSKE BEDRE APPROACH VIL AT LAVE EN FUNCTION DER TAGER HASH OG PAYLOAD OF SAMMENLIGNER :)
-    /*
-    hashdata_t totalHash;
-    memcpy(&totalHash, responseHeader + 48, sizeof(hashdata_t));
-    hashdata_t hashofpayload;
-    get_data_sha(payload, hashofpayload, payloadLenght, SHA256_HASH_SIZE);
-    hashofpayload[SHA256_HASH_SIZE] = '\0';
-    printf("Total Hash (UTF-8): ");
-    for (int i = 0; i < SHA256_HASH_SIZE; i++) {
-        printf("%02x", totalHash[i]);
+    
+    //Comparing hash from block with hashed payload
+    if(compare_block_hash(blockHash, payload) != 0){
+        printf("Hash from response header, do not match the hashed payload\n");
     }
-    printf("\n");
-
-    printf("Hash of Payload (UTF-8): ");
-    for (int i = 0; i < SHA256_HASH_SIZE; i++) {
-        printf("%02x", hashofpayload[i]);
-    }
-    printf("\n");
-    printf("Length of Total Hash: %lu\n", sizeof(totalHash));
-    printf("Length of Hash of Payload: %lu\n", sizeof(hashofpayload));*/
+    
     // Close the network connection
     close(network_socket);
 }
@@ -212,6 +206,9 @@ void get_file(char* username, char* password, char* salt, char* to_get)
 {
     compsys_helper_state_t state;
     Request_t request;
+    // Variable for checking whether the hash is identicial in each block.
+    int identicalhash = 0;
+
     request = get_request(username, password, salt, to_get);
     // Open the network connection
     network_socket = compsys_helper_open_clientfd(server_ip, server_port);
@@ -238,34 +235,40 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         payload[payloadLength] = '\0';
         printf("Got unexpected status code: %d\n", statusCode);
         printf("%s\n", payload);
-        exit(EXIT_FAILURE);
+
+        // Close the network connection
+        close(network_socket);
+        return;
     }
 
     // Making a new file and opening it to write in binary.
     FILE* file = fopen(to_get, "wb");
     if (file == NULL) {
-        perror("Error opening file");
+        fprintf(stderr, "Malloc failed for node\n");
         exit(EXIT_FAILURE);
     }
 
     // Make an array to store the blocks in, later used to write it.
     char** blocks = malloc(blockCount * sizeof(char*));
     if (blocks == NULL) {
-        perror("Error allocating memory for blocks");
+        fprintf(stderr, "Malloc failed for node\n");
         exit(EXIT_FAILURE);
     }
 
     // Since we need to read the response header, to determine the amount of blocks
-    // 
+    // We need to manuel write in the first payload into the array of blocks
     char payload1[payloadLength + 1];
     compsys_helper_readnb(&state, payload1, payloadLength);
     blocks[blockNumber] = malloc(payloadLength);
     // Copy the payload to the block
     payload1[payloadLength] = '\0';
     strcpy(blocks[blockNumber], payload1);
-
-
-    // Read each subsequent block and store it in the array
+    // Compare hash from blockhash from respose header, with payload hashed.
+    if (compare_block_hash(blockHash, blocks[blockNumber]) != 0){
+        identicalhash = 1;
+    }
+    // Read each subsequent block and store it in the array excluding first read blocknumber earlier. 
+    // That is why we typed - 1.
     for (size_t i = 0; i < blockCount - 1; ++i) {
         compsys_helper_readnb(&state, responseHeader, RESPONSE_HEADER_LEN);
         decoding_response_header(responseHeader, &payloadLength, &statusCode,
@@ -273,22 +276,27 @@ void get_file(char* username, char* password, char* salt, char* to_get)
         char payload[payloadLength + 1];
         compsys_helper_readnb(&state, payload, payloadLength);
 
-        // Allocate memory for the block
+        // Allocate memory for the block/payload
         blocks[blockNumber] = malloc(payloadLength);
         payload[payloadLength] = '\0';
 
         if (blocks[blockNumber] == NULL) {
-            perror("Error allocating memory for block");
+            fprintf(stderr, "Malloc failed for node\n");
             exit(EXIT_FAILURE);
         }
 
         // Copy the payload to the block using the index of the blockNumber.
         strcpy(blocks[blockNumber], payload);
+
+        // Comparing each hash from the blockhash and payload
+        if (compare_block_hash(blockHash, blocks[blockNumber]) != 0){
+            identicalhash = 1;
+        }
+
     }
 
     // Write blocks to the file in the correct order
-    // Clean up: free allocated memory for blocks
-
+    // Free allocated memory for blocks
     for (size_t i = 0; i < blockCount; ++i) {
         size_t blockLength = strlen(blocks[i]);
         fwrite(blocks[i], sizeof(char), blockLength, file);
@@ -297,6 +305,9 @@ void get_file(char* username, char* password, char* salt, char* to_get)
     // Close the file
     fclose(file);
     printf("Retrieved data written to '%s'.\n", to_get);
+    if(identicalhash != 0 || (compare_file_hash(totalHash, to_get)) != 0){
+        printf("Hash from response header, do not match the hashed of either individual block or file \n");
+    }
     // Close the network connection
     close(network_socket);
 }
@@ -424,12 +435,11 @@ int main(int argc, char **argv)
         password[i] = '\0';
     }
 
-    // Note that a random salt should be used, but you may find it easier to
-    // repeatedly test the same user credentials by using the hard coded value
-    // below instead, and commenting out this randomly generating section.
-    
+    // Checking for existing salt for the entered username if no
+    // match then generate new random salt.
     check_for_existing_salt(username, user_salt);
 
+    // Trying to register user, if already registered, will just proceed
     register_user(username, password, user_salt);
 
     char to_get[PATH_LEN];
@@ -440,7 +450,6 @@ int main(int argc, char **argv)
         if (strcmp(to_get, "quit") == 0){
             break;
         }
-
         //Get a file from server by sending the username, signature and file path, that
         //user typed in
         get_file(username, password, user_salt, to_get);

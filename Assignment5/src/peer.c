@@ -366,10 +366,11 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght)
         memcpy(&port, reply_body+(i*20+16), 4);
         port = ntohl(port);
         sprintf(portstr, "%d", port);
-        /*printf("I am gay \n");
+        /*
         printf("The ip: %s\n", ip);
         printf("The port: %d \n", port);
-        printf("The port str: %s \n", portstr);*/
+        printf("The port str: %s \n", portstr);
+        */
         memcpy(NewAdress->ip, ip, IP_LEN);
         memcpy(NewAdress->port, portstr, PORT_LEN);
         NewNetwork[i] = NewAdress;
@@ -449,9 +450,9 @@ void* client_thread(void* thread_args)
  */
 void handle_register(int connfd, char* client_ip, int client_port_int)
 {
-
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+
     
 }
 
@@ -483,6 +484,15 @@ void handle_server_request(int connfd)
 {
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+    if (COMMAND_INFORM == COMMAND_INFORM){
+        //handle_inform()
+    }
+    else if(COMMAND_REGISTER == COMMAND_REGISTER){
+        //handle_register()
+    }
+    else if(COMMAND_RETREIVE == COMMAND_RETREIVE){
+        //Handle_tretrieve()
+    }
 }
 
 /*
@@ -493,6 +503,7 @@ void* server_thread()
 {
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+
 }
 
 

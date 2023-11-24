@@ -329,22 +329,87 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     memset(reply_body, 0, reply_length + 1);
     memcpy(reply_body, msg_buf, reply_length);
 
+    char bufff[MAX_MSG_LEN];
     if (reply_status == STATUS_OK)
     {
         if (command == COMMAND_REGISTER)
         {
             // Your code here. This code has been added as a guide, but feel 
             // free to add more, or work in other parts of the code
+            handle_reply_fromserver(reply_body, reply_length);
         }
     } 
     else
     {
         printf("Got response code: %d, %s\n", reply_status, reply_body);
+
     }
     free(reply_body);
     close(peer_socket);
 }
 
+void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght)
+{
+    uint32_t n = reply_lenght/20;
+    PeerAddress_t** NewNetwork = malloc(n * sizeof(PeerAddress_t*));
+    if (NewNetwork == NULL) {
+        fprintf(stderr, "Malloc failed for NewNetwork\n");
+        exit(EXIT_FAILURE);
+    } 
+    printf("Number of adresses: %d \n", n);
+    for (uint32_t i=0; i<n; i++){
+        PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
+        char ip[IP_LEN];
+        memcpy(ip, reply_body+(i*20), IP_LEN);
+        char portstr[PORT_LEN];
+        uint32_t port;
+        memcpy(&port, reply_body+(i*20+16), 4);
+        port = ntohl(port);
+        sprintf(portstr, "%d", port);
+        /*printf("I am gay \n");
+        printf("The ip: %s\n", ip);
+        printf("The port: %d \n", port);
+        printf("The port str: %s \n", portstr);*/
+        memcpy(NewAdress->ip, ip, IP_LEN);
+        memcpy(NewAdress->port, portstr, PORT_LEN);
+        NewNetwork[i] = NewAdress;
+    }
+    peer_count = n;
+    network = NewNetwork;
+}
+
+
+
+/*
+void handle_reply_fromserver1(char* reply_body, uint32_t reply_lenght)
+{
+    uint32_t n = reply_lenght/20;
+    PeerAddress_t** NewNetwork = malloc(n * sizeof(PeerAddress_t*));
+    if (NewNetwork == NULL) {
+        fprintf(stderr, "Malloc failed for NewNetwork\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("%d \n", n);
+    for (uint32_t i=0; i<n; i++){
+        PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
+        memcpy(NewAdress->ip, reply_body+(i*20), IP_LEN);
+        uint32_t port;
+        char str[PORT_LEN];
+        printf("I am okay \n");
+        memcpy(&port, (reply_body+(i*20+16)), 4);
+        printf("I am okay 2\n");
+
+        //memcpy(NewAdress->port, (reply_body+(i*20+16)), 4);
+        sprintf(&str, "%ls", &port);
+        printf("Integer: %d\nString: %s\n", port, str);
+        memcpy(NewAdress->port, &str, PORT_LEN);
+        NewNetwork[i] = NewAdress;
+        printf("%s \n", NewNetwork[i]->ip);
+        printf("%s \n", NewNetwork[i]->port);
+        peer_count++;
+    }
+    network = NewNetwork;
+}*/
 
 /*
  * Function to act as thread for all required client interactions. This thread 
@@ -370,10 +435,10 @@ void* client_thread(void* thread_args)
     send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
 
     // Update peer_address with random peer from network
-    get_random_peer(peer_address);
+    //get_random_peer(peer_address);
 
     // Retrieve the larger file, that requires support for blocked messages
-    send_message(*peer_address, COMMAND_RETREIVE, "hamlet.txt");
+    //send_message(*peer_address, COMMAND_RETREIVE, "hamlet.txt");
 
     return NULL;
 }
@@ -384,8 +449,10 @@ void* client_thread(void* thread_args)
  */
 void handle_register(int connfd, char* client_ip, int client_port_int)
 {
+
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+    
 }
 
 /*

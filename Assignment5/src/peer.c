@@ -453,6 +453,31 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
 
+    //Basically when a another peer / client writes to us
+    //we act as a server, so it wants to register with us
+    //then we ofc register the 
+    PeerAddress_t* new_adress = malloc(sizeof(PeerAddress_t));
+    char portstr[PORT_LEN];
+    sprintf(portstr, "%d", client_port_int);
+    memcpy(new_adress->ip, client_ip, IP_LEN);
+    memcpy(new_adress->port, portstr, PORT_LEN);
+    int exist = 0;
+    for (uint32_t i = 0; i < peer_count; i++)
+    {
+        if (network[i]->ip == new_adress->ip && network[i]->port == new_adress->port){
+            exist = 1;
+        }
+    }
+    if (exist == 0){
+        network[peer_count] = new_adress;
+    }
+    peer_count++;
+    
+    // JEG TROR JEG HAR LAVET HVORDAN MAN TILFØJER NY NETWORK,
+    // DOG MANGLER VI AT SENDE BESKED TILBAGE TIL CLIENT/PEER
+    // FORDI DEN SKAL ALTID GENERATE EN RESPONSE.
+    // BASICALLY SÅ SKAL DU LAVE EN STRUCT ReplyHeader OG SENDE DEN TILBAGE TIL CLIENT
+
     
 }
 

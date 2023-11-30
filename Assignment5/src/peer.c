@@ -462,22 +462,35 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     memcpy(new_adress->ip, client_ip, IP_LEN);
     memcpy(new_adress->port, portstr, PORT_LEN);
     int exist = 0;
+    uint32_t status;
     for (uint32_t i = 0; i < peer_count; i++)
     {
         if (network[i]->ip == new_adress->ip && network[i]->port == new_adress->port){
             exist = 1;
+            status = 2;
         }
     }
     if (exist == 0){
         network[peer_count] = new_adress;
+        peer_count++;
+        status = 1;
     }
-    peer_count++;
+    
+
     
     // JEG TROR JEG HAR LAVET HVORDAN MAN TILFØJER NY NETWORK,
     // DOG MANGLER VI AT SENDE BESKED TILBAGE TIL CLIENT/PEER
     // FORDI DEN SKAL ALTID GENERATE EN RESPONSE.
     // BASICALLY SÅ SKAL DU LAVE EN STRUCT ReplyHeader OG SENDE DEN TILBAGE TIL CLIENT
-
+    ReplyHeader_t replyheader;
+    replyheader.status = status;
+    replyheader.block_count = 1;
+    replyheader.this_block = 0;
+    
+    /*strncpy(request_header.ip, my_address->ip, IP_LEN);
+    request_header.port = htonl(atoi(my_address->port));
+    request_header.command = htonl(command);
+    request_header.length = htonl(strlen(request_body));*/
     
 }
 
@@ -507,16 +520,36 @@ void handle_retreive(int connfd, char* request)
  */
 void handle_server_request(int connfd)
 {
+    char msg_buf[MAX_MSG_LEN];
+    compsys_helper_state_t state;
+    compsys_helper_readinitb(&state, connfd);
+    compsys_helper_readnb(&state, msg_buf, REQUEST_HEADER_LEN);
+    char reply_header[REQUEST_HEADER_LEN];
+    memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
+    
+    char ip[IP_LEN];
+    memcpy(ip, &reply_header[0], IP_LEN);
+    uint32_t port = ntohl(*(uint32_t*)&reply_header[16]);
+    uint32_t command = ntohl(*(uint32_t*)&reply_header[20]);
+    uint32_t lenght = ntohl(*(uint32_t*)&reply_header[24]);
+    //char request;
+
+    if (lenght != 0){
+        char request_body[MAX_MSG_LEN];
+        memcpy(request_body + REQUEST_HEADER_LEN, msg_buf, lenght);
+    }
+
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
-    if (COMMAND_INFORM == COMMAND_INFORM){
+    if (command == COMMAND_INFORM){
         //handle_inform()
+        return;
     }
-    else if(COMMAND_REGISTER == COMMAND_REGISTER){
-        //handle_register()
+    else if(command == COMMAND_REGISTER){
+        handle_register(connfd, ip, port);
     }
-    else if(COMMAND_RETREIVE == COMMAND_RETREIVE){
-        //Handle_tretrieve()
+    else if(command == COMMAND_RETREIVE){
+        //handle_retreive(connfd, request);
     }
 }
 
@@ -528,7 +561,30 @@ void* server_thread()
 {
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+    int listenfd;
+    int connfd;
+    socklen_t clientlen;
+    struct sockaddr_storage clientaddr;
 
+    listenfd = compsys_helper_open_listenfd(my_address->port);
+    printf("Starting to listen on %s:%s\n", my_address->ip, my_address->port);
+    while (1) {
+        // Any incoming calls are handled in a new server thread
+        clientlen = sizeof(struct sockaddr_storage);
+        connfd = accept(listenfd, &clientaddr, &clientlen);
+        printf("we get after accpet \n");
+        if (fork() == 0) {
+            close(listenfd);
+            pid_t childpid = getpid();
+            handle_server_request(connfd);
+            close(connfd);
+            exit(0);
+        }
+        close(connfd);
+    }
+
+    // You should never see this printed
+    printf("Server thread done\n");
 }
 
 

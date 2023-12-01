@@ -167,7 +167,7 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     strncpy(request_header.ip, my_address->ip, IP_LEN);
     request_header.port = htonl(atoi(my_address->port));
     request_header.command = htonl(command);
-    request_header.length = htonl(strlen(request_body));
+    request_header.length = htonl(20);
     
     printf("Request body: %s, request size %ld, request len: %ld \n", request_body, sizeof(request_body), strlen(request_body));
     memcpy(msg_buf, &request_header, REQUEST_HEADER_LEN);
@@ -178,6 +178,7 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     // We don't expect replies to inform messages so we're done here
     if (command == COMMAND_INFORM)
     {
+        close(peer_socket);
         return;
     }
 
@@ -461,7 +462,8 @@ void inform_peers(char* client_ip, int client_port_int){
         printf("1: Network thing ip: %s, and port: %s \n", network[i]->ip, network[i]->port);
         if (strcmp(network[i]->ip, my_address->ip) != 0 || strcmp(network[i]->port, my_address->port) != 0 ){
             printf("2: Network thing ip: %s, and port: %s \n", network[i]->ip, network[i]->port);
-    
+
+            printf("The size of request_bod when sending: %ld \n", sizeof(request_body));
             send_message(*network[i], COMMAND_INFORM, request_body);
         }
     }
@@ -488,7 +490,7 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     uint32_t status;
     for (uint32_t i = 0; i < peer_count; i++)
     {
-        if (network[i]->ip == new_adress->ip && network[i]->port == new_adress->port){
+        if (network[i]->ip == new_adress->ip && network[i]->port == new_adress->port){ //MAYBE USE STRCPR INSTEAD
             exist = 1;
             status = STATUS_PEER_EXISTS;
         }
@@ -591,9 +593,8 @@ void handle_server_request(int connfd)
     uint32_t command = ntohl(*(uint32_t*)&reply_header[20]);
     uint32_t lenght = ntohl(*(uint32_t*)&reply_header[24]);
     //char request;
-
+    char request_body[MAX_MSG_LEN];
     if (lenght != 0){
-        char request_body[MAX_MSG_LEN];
         memcpy(request_body + REQUEST_HEADER_LEN, msg_buf, lenght);
     }
 
@@ -639,6 +640,7 @@ void* server_thread()
 
     // You should never see this printed
     printf("Server thread done\n");
+    return NULL;
 }
 
 

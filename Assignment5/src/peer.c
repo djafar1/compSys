@@ -286,6 +286,21 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
         {
             if (payload_hash[i] != block_hash[i])
             {
+                // DET HER KAN MÅSKE PRINTE HASH SÅ VI KAN SE HVOR STOR
+                // FORSKELLEN ER.
+                /*
+                printf("Payload hash: ");
+                for (size_t j = 0; j < SHA256_HASH_SIZE; j++) {
+                    printf("%02x", payload_hash[j]);
+                }
+                printf("\n");
+
+                printf("Block hash: ");
+                for (size_t j = 0; j < SHA256_HASH_SIZE; j++) {
+                    printf("%02x", block_hash[j]);
+                }
+                printf("\n");
+                */
                 fprintf(stdout, "Payload hash does not match specified\n");
                 close(peer_socket);
                 return;
@@ -343,12 +358,14 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     memset(reply_body, 0, reply_length + 1);
     memcpy(reply_body, msg_buf, reply_length);
 
+    printf("Does it go down??? \n");
     if (reply_status == STATUS_OK)
     {
         if (command == COMMAND_REGISTER)
         {
             // Your code here. This code has been added as a guide, but feel 
             // free to add more, or work in other parts of the code
+            printf("What about here? it go down??? \n");
             handle_reply_fromserver(reply_body, reply_length);
         }
     } 
@@ -442,8 +459,10 @@ void* client_thread(void* thread_args)
     // Register the given user
     send_message(*peer_address, COMMAND_REGISTER, "\0");
 
+    
+    
     // Update peer_address with random peer from network
-    get_random_peer(peer_address);
+    //get_random_peer(peer_address);
 
     // Retrieve the smaller file, that doesn't not require support for blocks
     //send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
@@ -539,7 +558,7 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
         reply_header.length = htonl(sizeof(NetworkAddress_t) * peer_count);
         memcpy(msg_buf, &reply_header, REPLY_HEADER_LEN);
         memcpy(msg_buf+REQUEST_HEADER_LEN, &payload, sizeof(payload));
-
+        /// DET ER HER VI FUCKER OP MED HASH VALUES PLEASE FIX
         hashdata_t hash;
         get_data_sha((msg_buf+REQUEST_HEADER_LEN), hash, sizeof(payload), SHA256_HASH_SIZE);
         memcpy(reply_header.block_hash, hash, SHA256_HASH_SIZE);
@@ -628,32 +647,45 @@ void handle_server_request(int connfd)
  * Function to act as basis for running the server thread. This thread will be
  * run concurrently with the client thread, but is infinite in nature.
  */
-void* server_thread()
+void *server_thread()
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
     int listenfd;
     int connfd;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
 
+    // Open listening socket
     listenfd = compsys_helper_open_listenfd(my_address->port);
+    if (listenfd < 0) {
+        perror("Failed to open listening socket");
+        exit(EXIT_FAILURE);
+    }
+
     printf("Starting to listen on %s:%s\n", my_address->ip, my_address->port);
+
     while (1) {
         // Any incoming calls are handled in a new server thread
         clientlen = sizeof(struct sockaddr_storage);
         connfd = accept(listenfd, &clientaddr, &clientlen);
-        printf("we get after accpet \n");
+        if (connfd < 0) {
+            perror("Error accepting connection");
+            continue;  // Continue to the next iteration
+        }
 
+        printf("Accepted connection\n");
+
+        // Handle the server request
         handle_server_request(connfd);
 
+        // Close the connection
         close(connfd);
     }
 
-    // You should never see this printed
+    // This line will never be reached
     printf("Server thread done\n");
     return NULL;
 }
+
 
 
 int main(int argc, char **argv)

@@ -329,7 +329,6 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     memset(reply_body, 0, reply_length + 1);
     memcpy(reply_body, msg_buf, reply_length);
 
-    char bufff[MAX_MSG_LEN];
     if (reply_status == STATUS_OK)
     {
         if (command == COMMAND_REGISTER)
@@ -445,6 +444,25 @@ void* client_thread(void* thread_args)
 }
 
 /*
+* Handle the inform of the new peer using send message and the whole network
+*/
+void inform_peers(char* client_ip, int client_port_int){
+    char request_body[IP_LEN + sizeof(uint32_t)];
+
+    // Client port in network byte order
+    uint32_t client_port = htonl(client_port_int);
+    
+    memcpy(request_body, client_ip, IP_LEN);
+    memcpy(request_body + IP_LEN, &client_port, sizeof(uint32_t));
+    for (uint32_t i=0; i<peer_count - 1; i++)
+    {
+        if (strcmp(network[i]->ip, my_address->ip) != 0 || strcmp(network[i]->port, my_address->port) != 0 ){
+            send_message(*network[i], COMMAND_INFORM, request_body);
+        }
+    }
+}
+
+/*
  * Handle any 'register' type requests, as defined in the asignment text. This
  * should always generate a response.
  */
@@ -467,31 +485,64 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     {
         if (network[i]->ip == new_adress->ip && network[i]->port == new_adress->port){
             exist = 1;
-            status = 2;
+            status = STATUS_PEER_EXISTS;
         }
     }
-    if (exist == 0){
-        network[peer_count] = new_adress;
-        peer_count++;
-        status = 1;
-    }
-    
+    //If the case that the peer already exists
+    if (exist == 1){
+        // The struct for reply header
+        ReplyHeader_t reply_header; 
+        reply_header.status = htonl(status); // The status 
+        reply_header.block_count = htonl(1);
+        reply_header.this_block = htonl(0);   
+        reply_header.length = htonl(0);
+        hashdata_t hash;
+        get_data_sha("", hash, 0, SHA256_HASH_SIZE);
+        memcpy(reply_header.block_hash, hash, SHA256_HASH_SIZE);
+        memcpy(reply_header.total_hash, hash, SHA256_HASH_SIZE);
 
-    
-    // JEG TROR JEG HAR LAVET HVORDAN MAN TILFØJER NY NETWORK,
-    // DOG MANGLER VI AT SENDE BESKED TILBAGE TIL CLIENT/PEER
-    // FORDI DEN SKAL ALTID GENERATE EN RESPONSE.
-    // BASICALLY SÅ SKAL DU LAVE EN STRUCT ReplyHeader OG SENDE DEN TILBAGE TIL CLIENT
-    ReplyHeader_t replyheader;
-    replyheader.status = status;
-    replyheader.block_count = 1;
-    replyheader.this_block = 0;
-    
+        //Send reply header back to server
+        compsys_helper_writen(connfd, &reply_header, REPLY_HEADER_LEN);
+    }
+    //If the case that the peer doesn't already exists
+    if (exist == 0){
+        status = STATUS_OK;
+        char msg_buf[MAX_MSG_LEN];
+        NetworkAddress_t payload[peer_count];
+        for (uint32_t i = 0; i < peer_count; i++) {
+            strncpy(payload[i].ip, network[i]->ip, IP_LEN);
+            payload[i].port = htonl(atoi(network[i]->port));
+        }
+        ReplyHeader_t reply_header; // The struct for reply header
+        reply_header.status = htonl(status); // The status 
+        reply_header.block_count = htonl(1);
+        reply_header.this_block = htonl(0);
+        reply_header.length = htonl(sizeof(NetworkAddress_t) * peer_count);
+        memcpy(msg_buf, &reply_header, REPLY_HEADER_LEN);
+        memcpy(msg_buf+REQUEST_HEADER_LEN, &payload, sizeof(payload));
+
+        hashdata_t hash;
+        get_data_sha((msg_buf+REQUEST_HEADER_LEN), hash, sizeof(payload), SHA256_HASH_SIZE);
+        memcpy(reply_header.block_hash, hash, SHA256_HASH_SIZE);
+        memcpy(reply_header.total_hash, hash, SHA256_HASH_SIZE);
+
+        compsys_helper_writen(connfd, msg_buf, REQUEST_HEADER_LEN+(sizeof(payload)));
+
+        peer_count++;
+        network = realloc(network, peer_count * sizeof(PeerAddress_t*));
+        if (network == NULL) {
+            fprintf(stderr, "Realloc failed for network\n");
+            exit(EXIT_FAILURE);
+        }
+        network[peer_count-1] = new_adress;
+
+        // Using helper function to inform other peers about the newly added peer.
+        inform_peers(client_ip, client_port_int);
+    }
     /*strncpy(request_header.ip, my_address->ip, IP_LEN);
     request_header.port = htonl(atoi(my_address->port));
     request_header.command = htonl(command);
     request_header.length = htonl(strlen(request_body));*/
-    
 }
 
 /*

@@ -168,11 +168,12 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     request_header.port = htonl(atoi(my_address->port));
     request_header.command = htonl(command);
     request_header.length = htonl(strlen(request_body));
-
+    
+    printf("Request body: %s, request size %ld, request len: %ld \n", request_body, sizeof(request_body), strlen(request_body));
     memcpy(msg_buf, &request_header, REQUEST_HEADER_LEN);
-    memcpy(msg_buf+REQUEST_HEADER_LEN, request_body, strlen(request_body));
+    memcpy(msg_buf+REQUEST_HEADER_LEN, request_body, 20);
 
-    compsys_helper_writen(peer_socket, msg_buf, REQUEST_HEADER_LEN+strlen(request_body));
+    compsys_helper_writen(peer_socket, msg_buf, REQUEST_HEADER_LEN+20);
 
     // We don't expect replies to inform messages so we're done here
     if (command == COMMAND_INFORM)
@@ -432,7 +433,7 @@ void* client_thread(void* thread_args)
     get_random_peer(peer_address);
 
     // Retrieve the smaller file, that doesn't not require support for blocks
-    send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
+    //send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
 
     // Update peer_address with random peer from network
     //get_random_peer(peer_address);
@@ -454,9 +455,13 @@ void inform_peers(char* client_ip, int client_port_int){
     
     memcpy(request_body, client_ip, IP_LEN);
     memcpy(request_body + IP_LEN, &client_port, sizeof(uint32_t));
+    printf(" In inform peers: Request body: %s, request size %ld, request len: %ld \n", request_body, sizeof(request_body), strlen(request_body));
     for (uint32_t i=0; i<peer_count - 1; i++)
-    {
+    {   
+        printf("1: Network thing ip: %s, and port: %s \n", network[i]->ip, network[i]->port);
         if (strcmp(network[i]->ip, my_address->ip) != 0 || strcmp(network[i]->port, my_address->port) != 0 ){
+            printf("2: Network thing ip: %s, and port: %s \n", network[i]->ip, network[i]->port);
+    
             send_message(*network[i], COMMAND_INFORM, request_body);
         }
     }
@@ -527,6 +532,7 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
         memcpy(reply_header.total_hash, hash, SHA256_HASH_SIZE);
 
         compsys_helper_writen(connfd, msg_buf, REQUEST_HEADER_LEN+(sizeof(payload)));
+        printf("Peer count before: %d \n", peer_count);
 
         peer_count++;
         network = realloc(network, peer_count * sizeof(PeerAddress_t*));
@@ -535,6 +541,7 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
             exit(EXIT_FAILURE);
         }
         network[peer_count-1] = new_adress;
+        printf("Peer count after : %d \n", peer_count);
 
         // Using helper function to inform other peers about the newly added peer.
         inform_peers(client_ip, client_port_int);
@@ -624,13 +631,9 @@ void* server_thread()
         clientlen = sizeof(struct sockaddr_storage);
         connfd = accept(listenfd, &clientaddr, &clientlen);
         printf("we get after accpet \n");
-        if (fork() == 0) {
-            close(listenfd);
-            pid_t childpid = getpid();
-            handle_server_request(connfd);
-            close(connfd);
-            exit(0);
-        }
+
+        handle_server_request(connfd);
+
         close(connfd);
     }
 

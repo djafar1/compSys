@@ -167,14 +167,26 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     strncpy(request_header.ip, my_address->ip, IP_LEN);
     request_header.port = htonl(atoi(my_address->port));
     request_header.command = htonl(command);
-    request_header.length = htonl(20);
-    
-    printf("Request body: %s, request size %ld, request len: %ld \n", request_body, sizeof(request_body), strlen(request_body));
+    if (command == COMMAND_INFORM){
+        request_header.length = htonl(20);
+    }
+    else {
+        request_header.length = htonl(strlen(request_body));
+    }  
     memcpy(msg_buf, &request_header, REQUEST_HEADER_LEN);
-    memcpy(msg_buf+REQUEST_HEADER_LEN, request_body, 20);
+    if (command == COMMAND_INFORM){
+        memcpy(msg_buf+REQUEST_HEADER_LEN, request_body, 20);
 
-    compsys_helper_writen(peer_socket, msg_buf, REQUEST_HEADER_LEN+20);
-
+    }
+    else {
+        memcpy(msg_buf+REQUEST_HEADER_LEN, request_body, strlen(request_body));
+    }
+    if (command == COMMAND_INFORM){
+        compsys_helper_writen(peer_socket, msg_buf, REQUEST_HEADER_LEN+20);
+    }
+    else {
+        compsys_helper_writen(peer_socket, msg_buf, REQUEST_HEADER_LEN+strlen(request_body));
+    }
     // We don't expect replies to inform messages so we're done here
     if (command == COMMAND_INFORM)
     {

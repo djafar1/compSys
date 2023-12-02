@@ -752,7 +752,7 @@ void *server_thread()
         exit(EXIT_FAILURE);
     }
 
-    printf("Starting to listen on %s:%s\n", my_address->ip, my_address->port);
+    printf("Starting server at %s:%s\n", my_address->ip, my_address->port);
     
     while (1) {
         // Any incoming calls are handled in a new server thread
@@ -772,8 +772,10 @@ void *server_thread()
         // Close the connection
         close(connfd);
         assert(pthread_mutex_unlock(&network_mutex) == 0); 
-
     }
+
+    //Close the server
+    close(listenfd);
 
     // This line will never be reached
     printf("Server thread done\n");

@@ -382,13 +382,14 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
     //The lenght of the payload divided by 20 is equal to the amount of peers in the network
     peer_count = reply_lenght/20;
     //Realloc more space for the network
+    assert(pthread_mutex_lock(&network_mutex) == 0);
     network = realloc(network, peer_count * sizeof(PeerAddress_t*));
     if (network == NULL) {
         fprintf(stderr, "Realloc failed for network\n");
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
         exit(EXIT_FAILURE);
     }
 
-    assert(pthread_mutex_lock(&network_mutex) == 0);
     for (uint32_t i=0; i<peer_count; i++){
         PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
         char ip[IP_LEN];

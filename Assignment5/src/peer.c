@@ -458,9 +458,23 @@ void* client_thread(void* thread_args)
     // Register the given user
     send_message(*peer_address, COMMAND_REGISTER, "\0");
 
-    //Variable for path and for reading the input
+    // Update peer_address with random peer from network
+    get_random_peer(peer_address);
+
+    // Retrieve the smaller file, that doesn't not require support for blocks
+    send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
+
+    // Update peer_address with random peer from network
+    get_random_peer(peer_address);
+
+    // Retrieve the larger file, that requires support for blocked messages
+    send_message(*peer_address, COMMAND_RETREIVE, "hamlet.txt");
+
+    //Variable for path and for reading the input and making user interaction
     int c;
     char to_get[PATH_LEN];
+ 
+    //The while loop which allows for user interaction.
     while (1){
         printf("Type the name of a file to be retrieved, or 'quit' to quit:\n");
         scanf("%128s", to_get);

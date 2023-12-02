@@ -387,6 +387,8 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
         fprintf(stderr, "Realloc failed for network\n");
         exit(EXIT_FAILURE);
     }
+
+    assert(pthread_mutex_lock(&network_mutex) == 0);
     for (uint32_t i=0; i<peer_count; i++){
         PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
         char ip[IP_LEN];
@@ -404,6 +406,8 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
     for (uint32_t i=0; i<peer_count; i++){
         printf("First adress in network: %s:%s \n", network[i]->ip, network[i]->port);
     }
+    assert(pthread_mutex_unlock(&network_mutex) == 0);
+
 }
 
 /*
@@ -473,9 +477,11 @@ void inform_peers(char* client_ip, int client_port_int){
     request_body[sizeof(request_body) - 1] = '\0';
     for (uint32_t i=0; i<peer_count - 1; i++)
     {   
+        assert(pthread_mutex_lock(&network_mutex) == 0);
         if (strcmp(network[i]->ip, my_address->ip) != 0 || strcmp(network[i]->port, my_address->port) != 0 ){
             send_message(*network[i], COMMAND_INFORM, request_body);
         }
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
     }
 }
 
@@ -499,11 +505,13 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     int exist = 0;
     uint32_t status;
     for (uint32_t i = 0; i < peer_count; i++)
-    {
+    {   
+        assert(pthread_mutex_lock(&network_mutex) == 0);
         if (strcmp(network[i]->ip, new_adress->ip) == 0 && strcmp(network[i]->port, new_adress->port) == 0) {
             exist = 1;
             status = STATUS_PEER_EXISTS;
         }
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
     }
     //If the case that the peer already exists
     if (exist == 1){
@@ -528,19 +536,24 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
 
         //Adding the new to peer the network
         peer_count++;
+        assert(pthread_mutex_lock(&network_mutex) == 0);
         network = realloc(network, peer_count * sizeof(PeerAddress_t*));
         if (network == NULL) {
             fprintf(stderr, "Realloc failed for network\n");
             exit(EXIT_FAILURE);
         }
         network[peer_count-1] = new_adress;
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
 
         //Making a struct to hold the reply to the peer that registered with us
+        assert(pthread_mutex_lock(&network_mutex) == 0);
         NetworkAddress_t payload[peer_count];
         for (uint32_t i = 0; i < peer_count; i++) {
             strncpy(payload[i].ip, network[i]->ip, IP_LEN);
             payload[i].port = htonl(atoi(network[i]->port));
         }
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
+
 
         ReplyHeader_t reply_header; // The struct for reply header
         reply_header.status = htonl(status); // The status 
@@ -569,9 +582,12 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
         inform_peers(client_ip, client_port_int);
     }
     //Just to print the complete network.
+    assert(pthread_mutex_lock(&network_mutex) == 0);
     for (uint32_t i = 0; i < peer_count; i++){
         printf("New network added ip: %s, port: %s \n", network[i]->ip, network[i]->port);
     }
+    assert(pthread_mutex_unlock(&network_mutex) == 0);
+
 
 }
 
@@ -601,6 +617,7 @@ void handle_inform(char* request)
     memcpy(new_adress->port, portstr, PORT_LEN);
 
     int exist = 0;
+    assert(pthread_mutex_lock(&network_mutex) == 0);
     for (uint32_t i = 0; i < peer_count; i++)
     {
         if (strcmp(network[i]->ip, new_adress->ip) == 0 && strcmp(network[i]->port, new_adress->port) == 0) {
@@ -617,11 +634,14 @@ void handle_inform(char* request)
             exit(EXIT_FAILURE);
         }
         network[peer_count-1] = new_adress;
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
     }
     // If it already is somehow already registered in our network
     else {
         printf("The peer: %s:%s is already registered in our network \n", new_adress->ip, new_adress->port);
         free(new_adress);
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
+
     }
 
 }
@@ -724,7 +744,6 @@ void *server_thread()
     int connfd;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
-    assert(pthread_mutex_lock(&network_mutex) == 0);
     // Open listening socket
     listenfd = compsys_helper_open_listenfd(my_address->port);
     if (listenfd < 0) {
@@ -733,7 +752,6 @@ void *server_thread()
     }
 
     printf("Starting to listen on %s:%s\n", my_address->ip, my_address->port);
-    assert(pthread_mutex_unlock(&network_mutex) == 0);
     
     while (1) {
         // Any incoming calls are handled in a new server thread

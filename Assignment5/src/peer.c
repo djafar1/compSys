@@ -459,7 +459,6 @@ void* client_thread(void* thread_args)
     send_message(*peer_address, COMMAND_REGISTER, "\0");
 
     
-    
     // Update peer_address with random peer from network
     //get_random_peer(peer_address);
 
@@ -653,6 +652,24 @@ void handle_retreive(int connfd, char* request)
 {
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
+
+    //MEGET SIMPELT
+
+    //VI OPDELER MÆNGDEN I BLOCKS HVIS FILEN ER MEGET STOR :(
+    //SÅ FØRST BEREGNER HVOR MANGE BYTES DER ER I FILEN RIGHT.
+    //DET BURDE DER VÆRE EN FUNKTION TIL ELLER NOGET
+    //UDFRA DET KAN VI BEREGNE HVOR MANGE BLOCKS VI SKAL BRUGE
+    // VI VED AT PAYLOAD ER MAX MAX_MSG_LEN - REPLY_HEADER_LEN
+    // REPLY_HEADER_LEN SKAL VÆRE MED I HVER GANG VI SKRIVER TIL CLIENT
+    // DA SKAL VÆRE DE FØRSTE 80 BYTES AF HVER WRITE.
+    // Så ved hamlet kan vi sende 25 blocks i alt 
+    // 24 af dem er 8116 bytes i payload
+    // og den sidste 25/25 er payload i 1962.
+    
+    //For at få hash værdien af hver eneste payload og total hash af hele filen
+    // skal I bare kopiere fra handle_register hvor jeg laver hash
+    
+
 }
 
 /*

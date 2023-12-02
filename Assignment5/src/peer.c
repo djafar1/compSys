@@ -458,18 +458,23 @@ void* client_thread(void* thread_args)
     // Register the given user
     send_message(*peer_address, COMMAND_REGISTER, "\0");
 
-    
-    // Update peer_address with random peer from network
-    //get_random_peer(peer_address);
+    //Variable for path and for reading the input
+    int c;
+    char to_get[PATH_LEN];
+    while (1){
+        printf("Type the name of a file to be retrieved, or 'quit' to quit:\n");
+        scanf("%128s", to_get);
+        while ((c = getchar()) != '\n' && c != EOF);
+        if (strcmp(to_get, "quit") == 0){
+            break;
+        }
+        // Update peer_address with random peer from network        
+        get_random_peer(peer_address);
 
-    // Retrieve the smaller file, that doesn't not require support for blocks
-    //send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
-
-    // Update peer_address with random peer from network
-    //get_random_peer(peer_address);
-
-    // Retrieve the larger file, that requires support for blocked messages
-    //send_message(*peer_address, COMMAND_RETREIVE, "hamlet.txt");
+        //Retrieve the larger file, that the client/peer request.
+        send_message(*peer_address, COMMAND_RETREIVE, to_get);
+    }
+    printf("Shutting down client thread.\n");
 
     return NULL;
 }
@@ -602,9 +607,7 @@ void handle_inform(char* request)
     
     char ip_address[IP_LEN];
     memcpy(ip_address, &request[0], IP_LEN);
-    //uint32_t* port_ptr = (uint32_t*)&request[length - sizeof(uint32_t)];
-    memcpy(ip_address, request, IP_LEN);
-    uint32_t port_int = ntohl(*(uint32_t*)&request[16]);
+    uint32_t port_int = ntohl(*(uint32_t*)&request[IP_LEN]); 
 
     //Print just to check it works correctly
     /*
@@ -668,7 +671,8 @@ void handle_retreive(int connfd, char* request)
     
     //For at få hash værdien af hver eneste payload og total hash af hele filen
     // skal I bare kopiere fra handle_register hvor jeg laver hash
-    
+
+
 
 }
 
@@ -749,8 +753,6 @@ void *server_thread()
     printf("Server thread done\n");
     return NULL;
 }
-
-
 
 int main(int argc, char **argv)
 {

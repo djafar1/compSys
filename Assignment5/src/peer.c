@@ -724,16 +724,13 @@ void *server_thread()
     int connfd;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
-    assert(pthread_mutex_lock(&network_mutex) == 0);
     // Open listening socket
     listenfd = compsys_helper_open_listenfd(my_address->port);
     if (listenfd < 0) {
         fprintf(stderr, "Failed to open listening socket \n");
         exit(EXIT_FAILURE);
     }
-
-    printf("Starting to listen on %s:%s\n", my_address->ip, my_address->port);
-    assert(pthread_mutex_unlock(&network_mutex) == 0);
+    printf("Starting server at %s:%s\n", my_address->ip, my_address->port);
     
     while (1) {
         // Any incoming calls are handled in a new server thread
@@ -753,8 +750,10 @@ void *server_thread()
         // Close the connection
         close(connfd);
         assert(pthread_mutex_unlock(&network_mutex) == 0); 
-
     }
+
+    //Close the server
+    close(listenfd);
 
     // This line will never be reached
     printf("Server thread done\n");

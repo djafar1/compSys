@@ -474,7 +474,7 @@ void* client_thread(void* thread_args)
     //Variable for path and for reading the input and making user interaction
     int c;
     char to_get[PATH_LEN];
-
+ 
     //The while loop which allows for user interaction.
     while (1){
         printf("Type the name of a file to be retrieved, or 'quit' to quit:\n");

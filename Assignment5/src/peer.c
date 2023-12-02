@@ -653,25 +653,6 @@ void handle_inform(char* request)
  */
 void handle_retreive(int connfd, char* request)
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
-
-    // MEGET SIMPELT
-
-    // VI OPDELER MÆNGDEN I BLOCKS HVIS FILEN ER MEGET STOR :(
-    // SÅ FØRST BEREGNER HVOR MANGE BYTES DER ER I FILEN RIGHT.
-    // DET BURDE DER VÆRE EN FUNKTION TIL ELLER NOGET
-    // UDFRA DET KAN VI BEREGNE HVOR MANGE BLOCKS VI SKAL BRUGE
-    // VI VED AT PAYLOAD ER MAX MAX_MSG_LEN - REPLY_HEADER_LEN
-    // REPLY_HEADER_LEN SKAL VÆRE MED I HVER GANG VI SKRIVER TIL CLIENT
-    // DA SKAL VÆRE DE FØRSTE 80 BYTES AF HVER WRITE.
-    // Så ved hamlet kan vi sende 25 blocks i alt 
-    // 24 af dem er 8116 bytes i payload
-    // og den sidste 25/25 er payload i 1962.
-    
-    // For at få hash værdien af hver eneste payload og total hash af hele filen
-    // skal I bare kopiere fra handle_register hvor jeg laver hash
-    // vores buffer
     char msg_buf[MAX_MSG_LEN];
     ReplyHeader_t reply_header; 
 
@@ -685,15 +666,17 @@ void handle_retreive(int connfd, char* request)
         exit(EXIT_FAILURE);
     } 
     fseek(file, 0, SEEK_END);
-
+    long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
+
+    printf("File size: %ld bytes\n", file_size);
 
     // Read file content and send it back to the client
     char file_content[MAX_MSG_LEN];
     size_t bytes_read = fread(file_content, sizeof(char), MAX_MSG_LEN, file);
     fclose(file);
     if (bytes_read > 0) {
-        compsys_helper_writen(connfd, file_content, bytes_read);
+        //compsys_helper_writen(connfd, file_content, bytes_read);
     } else {
         fprintf(stderr, "File read error \n");
         exit(EXIT_FAILURE);  
@@ -707,13 +690,14 @@ void handle_retreive(int connfd, char* request)
  */
 void handle_server_request(int connfd)
 {
+    printf("What goes wrong \n");
     char msg_buf[MAX_MSG_LEN];
     compsys_helper_state_t state;
     compsys_helper_readinitb(&state, connfd);
     compsys_helper_readnb(&state, msg_buf, REQUEST_HEADER_LEN);
     char reply_header[REQUEST_HEADER_LEN];
     memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
-    
+        printf("What goes wrong2 \n");
     char ip[IP_LEN];
     memcpy(ip, &reply_header[0], IP_LEN);
     uint32_t port = ntohl(*(uint32_t*)&reply_header[16]);
@@ -723,6 +707,7 @@ void handle_server_request(int connfd)
     compsys_helper_readnb(&state, msg_buf, length);
     memcpy(request, msg_buf, length);
     request[length] = '\0';
+    printf("Request: %s, command: %d \n", request, command);
 
     if (command == COMMAND_INFORM){
         handle_inform(request);
@@ -731,7 +716,7 @@ void handle_server_request(int connfd)
         handle_register(connfd, ip, port);
     }
     else if(command == COMMAND_RETREIVE){
-        //handle_retreive(connfd, request);
+        handle_retreive(connfd, request);
     }
 }
 
@@ -756,7 +741,7 @@ void *server_thread()
     
     while (1) {
         // Any incoming calls are handled in a new server thread
-        assert(pthread_mutex_lock(&network_mutex) == 0);
+        //assert(pthread_mutex_lock(&network_mutex) == 0);
         clientlen = sizeof(struct sockaddr_storage);
         connfd = accept(listenfd, &clientaddr, &clientlen);
         if (connfd < 0) {
@@ -771,9 +756,8 @@ void *server_thread()
 
         // Close the connection
         close(connfd);
-        assert(pthread_mutex_unlock(&network_mutex) == 0); 
+        //assert(pthread_mutex_unlock(&network_mutex) == 0); 
     }
-
     //Close the server
     close(listenfd);
 
@@ -872,6 +856,12 @@ int main(int argc, char **argv)
     //If we become a client also, we replace the my_adress pointer
     //in our network[0], with the reply from the server, so we free it here.
     free(my_address);
+
+    for (uint32_t i = 0; i < peer_count; i++)
+    {
+        free(network[i]);
+    }
+    free(network);
 
     exit(EXIT_SUCCESS);
 }

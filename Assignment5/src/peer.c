@@ -286,6 +286,21 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
         {
             if (payload_hash[i] != block_hash[i])
             {
+                /*
+                printf("Payload hash: ");
+                for (size_t j = 0; j < SHA256_HASH_SIZE; j++) {
+                    printf("%02x", payload_hash[j]);
+                }
+                printf("\n");
+
+                printf("Block hash: ");
+                for (size_t j = 0; j < SHA256_HASH_SIZE; j++) {
+                    printf("%02x", block_hash[j]);
+                }
+                printf("\n");
+                
+                printf("The size of the paylod: %d", sizeof(payload));
+                */
                 fprintf(stdout, "Payload hash does not match specified\n");
                 close(peer_socket);
                 return;
@@ -387,6 +402,7 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght)
         memcpy(NewAdress->ip, ip, IP_LEN);
         memcpy(NewAdress->port, portstr, PORT_LEN);
         NewNetwork[i] = NewAdress;
+        printf("New network added ip: %s, port: %s \n", NewAdress->ip, NewAdress->port);
     }
     peer_count = n;
     network = NewNetwork;
@@ -442,8 +458,10 @@ void* client_thread(void* thread_args)
     // Register the given user
     send_message(*peer_address, COMMAND_REGISTER, "\0");
 
+    
+    
     // Update peer_address with random peer from network
-    get_random_peer(peer_address);
+    //get_random_peer(peer_address);
 
     // Retrieve the smaller file, that doesn't not require support for blocks
     //send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
@@ -461,21 +479,18 @@ void* client_thread(void* thread_args)
 * Handle the inform of the new peer using send message and the whole network
 */
 void inform_peers(char* client_ip, int client_port_int){
-    char request_body[IP_LEN + sizeof(uint32_t)];
+    char request_body[IP_LEN + sizeof(uint32_t) + 1];
 
     // Client port in network byte order
     uint32_t client_port = htonl(client_port_int);
     
     memcpy(request_body, client_ip, IP_LEN);
     memcpy(request_body + IP_LEN, &client_port, sizeof(uint32_t));
-    printf(" In inform peers: Request body: %s, request size %ld, request len: %ld \n", request_body, sizeof(request_body), strlen(request_body));
+
+    request_body[sizeof(request_body) - 1] = '\0';
     for (uint32_t i=0; i<peer_count - 1; i++)
     {   
-        printf("1: Network thing ip: %s, and port: %s \n", network[i]->ip, network[i]->port);
         if (strcmp(network[i]->ip, my_address->ip) != 0 || strcmp(network[i]->port, my_address->port) != 0 ){
-            printf("2: Network thing ip: %s, and port: %s \n", network[i]->ip, network[i]->port);
-
-            printf("The size of request_bod when sending: %ld \n", sizeof(request_body));
             send_message(*network[i], COMMAND_INFORM, request_body);
         }
     }
@@ -502,7 +517,7 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     uint32_t status;
     for (uint32_t i = 0; i < peer_count; i++)
     {
-        if (network[i]->ip == new_adress->ip && network[i]->port == new_adress->port){ //MAYBE USE STRCPR INSTEAD
+        if (strcmp(network[i]->ip, new_adress->ip) == 0 && strcmp(network[i]->port, new_adress->port) == 0) {
             exist = 1;
             status = STATUS_PEER_EXISTS;
         }
@@ -527,27 +542,8 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     if (exist == 0){
         status = STATUS_OK;
         char msg_buf[MAX_MSG_LEN];
-        NetworkAddress_t payload[peer_count];
-        for (uint32_t i = 0; i < peer_count; i++) {
-            strncpy(payload[i].ip, network[i]->ip, IP_LEN);
-            payload[i].port = htonl(atoi(network[i]->port));
-        }
-        ReplyHeader_t reply_header; // The struct for reply header
-        reply_header.status = htonl(status); // The status 
-        reply_header.block_count = htonl(1);
-        reply_header.this_block = htonl(0);
-        reply_header.length = htonl(sizeof(NetworkAddress_t) * peer_count);
-        memcpy(msg_buf, &reply_header, REPLY_HEADER_LEN);
-        memcpy(msg_buf+REQUEST_HEADER_LEN, &payload, sizeof(payload));
 
-        hashdata_t hash;
-        get_data_sha((msg_buf+REQUEST_HEADER_LEN), hash, sizeof(payload), SHA256_HASH_SIZE);
-        memcpy(reply_header.block_hash, hash, SHA256_HASH_SIZE);
-        memcpy(reply_header.total_hash, hash, SHA256_HASH_SIZE);
-
-        compsys_helper_writen(connfd, msg_buf, REQUEST_HEADER_LEN+(sizeof(payload)));
-        printf("Peer count before: %d \n", peer_count);
-
+        //Adding the new to peer the network
         peer_count++;
         network = realloc(network, peer_count * sizeof(PeerAddress_t*));
         if (network == NULL) {
@@ -555,15 +551,45 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
             exit(EXIT_FAILURE);
         }
         network[peer_count-1] = new_adress;
-        printf("Peer count after : %d \n", peer_count);
+
+        //Making a struct to hold the reply to the peer that registered with us
+        NetworkAddress_t payload[peer_count];
+        for (uint32_t i = 0; i < peer_count; i++) {
+            strncpy(payload[i].ip, network[i]->ip, IP_LEN);
+            payload[i].port = htonl(atoi(network[i]->port));
+        }
+
+        ReplyHeader_t reply_header; // The struct for reply header
+        reply_header.status = htonl(status); // The status 
+        reply_header.block_count = htonl(1);
+        reply_header.this_block = htonl(0);
+        reply_header.length = htonl(sizeof(NetworkAddress_t) * peer_count);
+        hashdata_t hash;
+        get_data_sha((char*)payload, hash, sizeof(NetworkAddress_t) * peer_count, SHA256_HASH_SIZE);
+        memcpy(reply_header.block_hash, hash, SHA256_HASH_SIZE);
+        memcpy(reply_header.total_hash, hash, SHA256_HASH_SIZE);
+
+        //Just because we wanted to check whether the hash worked or not:
+        /*
+        printf("Calculated Payload hash: ");
+        for (int i = 0; i < SHA256_HASH_SIZE; i++) {
+            printf("%02x", hash[i]);
+        }
+        printf("\n"); */
+
+        memcpy(msg_buf, &reply_header, REPLY_HEADER_LEN);
+        memcpy(msg_buf+REPLY_HEADER_LEN, &payload, sizeof(payload));
+        
+        compsys_helper_writen(connfd, msg_buf, REPLY_HEADER_LEN+(sizeof(payload)));
 
         // Using helper function to inform other peers about the newly added peer.
         inform_peers(client_ip, client_port_int);
     }
-    /*strncpy(request_header.ip, my_address->ip, IP_LEN);
-    request_header.port = htonl(atoi(my_address->port));
-    request_header.command = htonl(command);
-    request_header.length = htonl(strlen(request_body));*/
+    //Just to print the complete network.
+    for (uint32_t i = 0; i < peer_count; i++){
+        printf("New network added ip: %s, port: %s \n", network[i]->ip, network[i]->port);
+    }
+
 }
 
 /*
@@ -572,8 +598,51 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
  */
 void handle_inform(char* request)
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
+    // In our code we assume that the first 16 bytes are for the IP
+    // and the last 4 is for the port, so are allowed to hardcode it.
+    
+    char ip_address[IP_LEN];
+    memcpy(ip_address, &request[0], IP_LEN);
+    //uint32_t* port_ptr = (uint32_t*)&request[length - sizeof(uint32_t)];
+    memcpy(ip_address, request, IP_LEN);
+    uint32_t port_int = ntohl(*(uint32_t*)&request[16]);
+
+    //Print just to check it works correctly
+    /*
+    printf("IP Address: %s\n", ip_address);
+    printf("Port: %u\n", port_int);
+    */
+
+    PeerAddress_t* new_adress = malloc(sizeof(PeerAddress_t));
+    char portstr[PORT_LEN];
+    sprintf(portstr, "%d", port_int);
+    memcpy(new_adress->ip, ip_address, IP_LEN);
+    memcpy(new_adress->port, portstr, PORT_LEN);
+
+    int exist = 0;
+    for (uint32_t i = 0; i < peer_count; i++)
+    {
+        if (strcmp(network[i]->ip, new_adress->ip) == 0 && strcmp(network[i]->port, new_adress->port) == 0) {
+            exist = 1;
+        }
+    }
+    if (exist == 0){
+        printf("Informed of new peer %s:%s\n", new_adress->ip,new_adress->port);
+        //Adding the new to peer the network
+        peer_count++;
+        network = realloc(network, peer_count * sizeof(PeerAddress_t*));
+        if (network == NULL) {
+            fprintf(stderr, "Realloc failed for network\n");
+            exit(EXIT_FAILURE);
+        }
+        network[peer_count-1] = new_adress;
+    }
+    // If it already is somehow already registered in our network
+    else {
+        printf("The peer: %s:%s is already registered in our network \n", new_adress->ip, new_adress->port);
+        free(new_adress);
+    }
+
 }
 
 /*
@@ -603,18 +672,15 @@ void handle_server_request(int connfd)
     memcpy(ip, &reply_header[0], IP_LEN);
     uint32_t port = ntohl(*(uint32_t*)&reply_header[16]);
     uint32_t command = ntohl(*(uint32_t*)&reply_header[20]);
-    uint32_t lenght = ntohl(*(uint32_t*)&reply_header[24]);
-    //char request;
-    char request_body[MAX_MSG_LEN];
-    if (lenght != 0){
-        memcpy(request_body + REQUEST_HEADER_LEN, msg_buf, lenght);
-    }
-
+    uint32_t length = ntohl(*(uint32_t*)&reply_header[24]);
+    //char request in case that someone is informing us.;
+    char request[length];
+    compsys_helper_readnb(&state, msg_buf, length);
+    memcpy(request, msg_buf, length);
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
     if (command == COMMAND_INFORM){
-        //handle_inform()
-        return;
+        handle_inform(request);
     }
     else if(command == COMMAND_REGISTER){
         handle_register(connfd, ip, port);
@@ -628,32 +694,45 @@ void handle_server_request(int connfd)
  * Function to act as basis for running the server thread. This thread will be
  * run concurrently with the client thread, but is infinite in nature.
  */
-void* server_thread()
+void *server_thread()
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
     int listenfd;
     int connfd;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
 
+    // Open listening socket
     listenfd = compsys_helper_open_listenfd(my_address->port);
+    if (listenfd < 0) {
+        perror("Failed to open listening socket");
+        exit(EXIT_FAILURE);
+    }
+
     printf("Starting to listen on %s:%s\n", my_address->ip, my_address->port);
+
     while (1) {
         // Any incoming calls are handled in a new server thread
         clientlen = sizeof(struct sockaddr_storage);
         connfd = accept(listenfd, &clientaddr, &clientlen);
-        printf("we get after accpet \n");
+        if (connfd < 0) {
+            perror("Error accepting connection");
+            continue;  // Continue to the next iteration
+        }
 
+        printf("Accepted connection\n");
+
+        // Handle the server request
         handle_server_request(connfd);
 
+        // Close the connection
         close(connfd);
     }
 
-    // You should never see this printed
+    // This line will never be reached
     printf("Server thread done\n");
     return NULL;
 }
+
 
 
 int main(int argc, char **argv)

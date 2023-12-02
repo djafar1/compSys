@@ -376,16 +376,20 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     close(peer_socket);
 }
 
-void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght)
-{
-    uint32_t n = reply_lenght/20;
-    PeerAddress_t** NewNetwork = malloc(n * sizeof(PeerAddress_t*));
-    if (NewNetwork == NULL) {
-        fprintf(stderr, "Malloc failed for NewNetwork\n");
+void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
+    //We free the intial our adress in the network since
+    //The reply_body/payload from the server includes our address
+    //So when we go into the for loop we add it back in the order the send it
+    free(network[0]);
+    //The lenght of the payload divided by 20 is equal to the amount of peers in the network
+    peer_count = reply_lenght/20;
+    //Realloc more space for the network
+    network = realloc(network, peer_count * sizeof(PeerAddress_t*));
+    if (network == NULL) {
+        fprintf(stderr, "Realloc failed for network\n");
         exit(EXIT_FAILURE);
-    } 
-    printf("Number of adresses: %d \n", n);
-    for (uint32_t i=0; i<n; i++){
+    }
+    for (uint32_t i=0; i<peer_count; i++){
         PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
         char ip[IP_LEN];
         memcpy(ip, reply_body+(i*20), IP_LEN);
@@ -394,52 +398,12 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght)
         memcpy(&port, reply_body+(i*20+16), 4);
         port = ntohl(port);
         sprintf(portstr, "%d", port);
-        /*
-        printf("The ip: %s\n", ip);
-        printf("The port: %d \n", port);
-        printf("The port str: %s \n", portstr);
-        */
         memcpy(NewAdress->ip, ip, IP_LEN);
         memcpy(NewAdress->port, portstr, PORT_LEN);
-        NewNetwork[i] = NewAdress;
+        network[i] = NewAdress;
         printf("New network added ip: %s, port: %s \n", NewAdress->ip, NewAdress->port);
     }
-    peer_count = n;
-    network = NewNetwork;
 }
-
-
-
-/*
-void handle_reply_fromserver1(char* reply_body, uint32_t reply_lenght)
-{
-    uint32_t n = reply_lenght/20;
-    PeerAddress_t** NewNetwork = malloc(n * sizeof(PeerAddress_t*));
-    if (NewNetwork == NULL) {
-        fprintf(stderr, "Malloc failed for NewNetwork\n");
-        exit(EXIT_FAILURE);
-    }
-    printf("%d \n", n);
-    for (uint32_t i=0; i<n; i++){
-        PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
-        memcpy(NewAdress->ip, reply_body+(i*20), IP_LEN);
-        uint32_t port;
-        char str[PORT_LEN];
-        printf("I am okay \n");
-        memcpy(&port, (reply_body+(i*20+16)), 4);
-        printf("I am okay 2\n");
-
-        //memcpy(NewAdress->port, (reply_body+(i*20+16)), 4);
-        sprintf(&str, "%ls", &port);
-        printf("Integer: %d\nString: %s\n", port, str);
-        memcpy(NewAdress->port, &str, PORT_LEN);
-        NewNetwork[i] = NewAdress;
-        printf("%s \n", NewNetwork[i]->ip);
-        printf("%s \n", NewNetwork[i]->port);
-        peer_count++;
-    }
-    network = NewNetwork;
-}*/
 
 /*
  * Function to act as thread for all required client interactions. This thread 
@@ -671,12 +635,12 @@ void handle_retreive(int connfd, char* request)
     // Your code here. This function has been added as a guide, but feel free 
     // to add more, or work in other parts of the code
 
-    //MEGET SIMPELT
+    // MEGET SIMPELT
 
-    //VI OPDELER MÆNGDEN I BLOCKS HVIS FILEN ER MEGET STOR :(
-    //SÅ FØRST BEREGNER HVOR MANGE BYTES DER ER I FILEN RIGHT.
-    //DET BURDE DER VÆRE EN FUNKTION TIL ELLER NOGET
-    //UDFRA DET KAN VI BEREGNE HVOR MANGE BLOCKS VI SKAL BRUGE
+    // VI OPDELER MÆNGDEN I BLOCKS HVIS FILEN ER MEGET STOR :(
+    // SÅ FØRST BEREGNER HVOR MANGE BYTES DER ER I FILEN RIGHT.
+    // DET BURDE DER VÆRE EN FUNKTION TIL ELLER NOGET
+    // UDFRA DET KAN VI BEREGNE HVOR MANGE BLOCKS VI SKAL BRUGE
     // VI VED AT PAYLOAD ER MAX MAX_MSG_LEN - REPLY_HEADER_LEN
     // REPLY_HEADER_LEN SKAL VÆRE MED I HVER GANG VI SKRIVER TIL CLIENT
     // DA SKAL VÆRE DE FØRSTE 80 BYTES AF HVER WRITE.
@@ -684,52 +648,34 @@ void handle_retreive(int connfd, char* request)
     // 24 af dem er 8116 bytes i payload
     // og den sidste 25/25 er payload i 1962.
     
-    //For at få hash værdien af hver eneste payload og total hash af hele filen
+    // For at få hash værdien af hver eneste payload og total hash af hele filen
     // skal I bare kopiere fra handle_register hvor jeg laver hash
-
-    //vores buffer
+    // vores buffer
     char msg_buf[MAX_MSG_LEN];
-    compsys_helper_state_t state;
-    char reply_header[REQUEST_HEADER_LEN];
-    memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
+    ReplyHeader_t reply_header; 
 
-    //tager ip fra requestheader
-    char ip[IP_LEN];
-    memcpy(ip, &reply_header[0], IP_LEN);
-    //tager port fra header osv..
-    uint32_t port = ntohl((uint32_t)&reply_header[16]);
-    uint32_t command = ntohl((uint32_t)&reply_header[20]);
-    uint32_t length = ntohl((uint32_t)&reply_header[24]);
-
-    // Extract the request body
-    char request_body[MAX_MSG_LEN];
-    memcpy(request_body, msg_buf + REQUEST_HEADER_LEN, length);
-    request_body[length] = '\0';
+    //memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
 
     // Check if the requested file exists in your system
-    if (access(request_body, F_OK) != -1) {
-        // File exists, handle retrieving the file content and sending it back to the client
-        // Your code to send the file content back to the client using 'compsys_helper_writen'
-        FILE* file_ptr = fopen(request_body, "r");
-        if (file_ptr == NULL) {
-                fprintf(stderr, "File open error \n");
-                exit(EXIT_FAILURE);
-        } else {
-            // Read file content and send it back to the client
-            char file_content[MAX_MSG_LEN];
-            size_t bytes_read = fread(file_content, sizeof(char), MAX_MSG_LEN, file_ptr);
-            fclose(file_ptr);
+    // File exists, handle retrieving the file content and sending it back to the client    
+    FILE* file = fopen(request, "r");
+    if (file == NULL) {
+        fprintf(stderr, "File open error \n");
+        exit(EXIT_FAILURE);
+    } 
+    fseek(file, 0, SEEK_END);
 
-            if (bytes_read > 0) {
-                compsys_helper_writen(connfd, file_content, bytes_read);
-            } else {
-                fprintf(stderr, "File read error \n");
-                exit(EXIT_FAILURE);
-            }
-        }
+    fseek(file, 0, SEEK_SET);
+
+    // Read file content and send it back to the client
+    char file_content[MAX_MSG_LEN];
+    size_t bytes_read = fread(file_content, sizeof(char), MAX_MSG_LEN, file);
+    fclose(file);
+    if (bytes_read > 0) {
+        compsys_helper_writen(connfd, file_content, bytes_read);
     } else {
-        // File doesn't exist
-        printf("File does not exist.");
+        fprintf(stderr, "File read error \n");
+        exit(EXIT_FAILURE);  
     }
 
 }
@@ -752,12 +698,11 @@ void handle_server_request(int connfd)
     uint32_t port = ntohl(*(uint32_t*)&reply_header[16]);
     uint32_t command = ntohl(*(uint32_t*)&reply_header[20]);
     uint32_t length = ntohl(*(uint32_t*)&reply_header[24]);
-    //char request in case that someone is informing us.;
-    char request[length];
+    char request[length+1];
     compsys_helper_readnb(&state, msg_buf, length);
     memcpy(request, msg_buf, length);
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
+    request[length] = '\0';
+
     if (command == COMMAND_INFORM){
         handle_inform(request);
     }
@@ -783,7 +728,7 @@ void *server_thread()
     // Open listening socket
     listenfd = compsys_helper_open_listenfd(my_address->port);
     if (listenfd < 0) {
-        perror("Failed to open listening socket");
+        fprintf(stderr, "Failed to open listening socket \n");
         exit(EXIT_FAILURE);
     }
 
@@ -794,10 +739,10 @@ void *server_thread()
         clientlen = sizeof(struct sockaddr_storage);
         connfd = accept(listenfd, &clientaddr, &clientlen);
         if (connfd < 0) {
-            perror("Error accepting connection");
-            continue;  // Continue to the next iteration
+            fprintf(stderr, "Error accepting connection \n");
+            close(connfd);
+            continue; 
         }
-
         printf("Accepted connection\n");
 
         // Handle the server request

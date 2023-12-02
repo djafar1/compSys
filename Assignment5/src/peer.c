@@ -458,6 +458,7 @@ void* client_thread(void* thread_args)
     // Register the given user
     send_message(*peer_address, COMMAND_REGISTER, "\0");
 
+
     // Update peer_address with random peer from network
     get_random_peer(peer_address);
 
@@ -686,7 +687,50 @@ void handle_retreive(int connfd, char* request)
     //For at få hash værdien af hver eneste payload og total hash af hele filen
     // skal I bare kopiere fra handle_register hvor jeg laver hash
 
+    //vores buffer
+    char msg_buf[MAX_MSG_LEN];
+    compsys_helper_state_t state;
+    char reply_header[REQUEST_HEADER_LEN];
+    memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
 
+    //tager ip fra requestheader
+    char ip[IP_LEN];
+    memcpy(ip, &reply_header[0], IP_LEN);
+    //tager port fra header osv..
+    uint32_t port = ntohl((uint32_t)&reply_header[16]);
+    uint32_t command = ntohl((uint32_t)&reply_header[20]);
+    uint32_t length = ntohl((uint32_t)&reply_header[24]);
+
+    // Extract the request body
+    char request_body[MAX_MSG_LEN];
+    memcpy(request_body, msg_buf + REQUEST_HEADER_LEN, length);
+    request_body[length] = '\0';
+
+    // Check if the requested file exists in your system
+    if (access(request_body, F_OK) != -1) {
+        // File exists, handle retrieving the file content and sending it back to the client
+        // Your code to send the file content back to the client using 'compsys_helper_writen'
+        FILE* file_ptr = fopen(request_body, "r");
+        if (file_ptr == NULL) {
+                fprintf(stderr, "File open error \n");
+                exit(EXIT_FAILURE);
+        } else {
+            // Read file content and send it back to the client
+            char file_content[MAX_MSG_LEN];
+            size_t bytes_read = fread(file_content, sizeof(char), MAX_MSG_LEN, file_ptr);
+            fclose(file_ptr);
+
+            if (bytes_read > 0) {
+                compsys_helper_writen(connfd, file_content, bytes_read);
+            } else {
+                fprintf(stderr, "File read error \n");
+                exit(EXIT_FAILURE);
+            }
+        }
+    } else {
+        // File doesn't exist
+        printf("File does not exist.");
+    }
 
 }
 

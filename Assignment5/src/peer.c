@@ -604,13 +604,6 @@ void handle_inform(char* request)
     char ip_address[IP_LEN];
     memcpy(ip_address, &request[0], IP_LEN);
     uint32_t port_int = ntohl(*(uint32_t*)&request[IP_LEN]); 
-
-    //Print just to check it works correctly
-    /*
-    printf("IP Address: %s\n", ip_address);
-    printf("Port: %u\n", port_int);
-    */
-
     PeerAddress_t* new_adress = malloc(sizeof(PeerAddress_t));
     char portstr[PORT_LEN];
     sprintf(portstr, "%d", port_int);
@@ -653,35 +646,51 @@ void handle_inform(char* request)
  */
 void handle_retreive(int connfd, char* request)
 {
-    char msg_buf[MAX_MSG_LEN];
-    ReplyHeader_t reply_header; 
-
     //memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
 
-    // Check if the requested file exists in your system
-    // File exists, handle retrieving the file content and sending it back to the client    
+
+    // Check if the requested file exists
     FILE* file = fopen(request, "r");
     if (file == NULL) {
         fprintf(stderr, "File open error \n");
         exit(EXIT_FAILURE);
     } 
+    // Number of bytes in the file
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    printf("File size: %ld bytes\n", file_size);
+    //Dividing the (file_size+MAX_Payload) with Max_Payload, ensures that it rounds up to the nearest integer
+    //Also in case that it is a small file it will ensure that atleast one block is made for it.
+    uint32_t max_payload = MAX_MSG_LEN-REPLY_HEADER_LEN;
+    uint32_t num_blocks = (file_size + max_payload) / (max_payload); 
+    hashdata_t totalhash;
+    uint32_t status = htonl(status);
+    get_file_sha(request, totalhash, SHA256_HASH_SIZE);
 
-    // Read file content and send it back to the client
-    char file_content[MAX_MSG_LEN];
-    size_t bytes_read = fread(file_content, sizeof(char), MAX_MSG_LEN, file);
-    fclose(file);
-    if (bytes_read > 0) {
-        //compsys_helper_writen(connfd, file_content, bytes_read);
-    } else {
-        fprintf(stderr, "File read error \n");
-        exit(EXIT_FAILURE);  
+    for (uint32_t i = 0; i < num_blocks; i++)
+    {
+        char msg_buf[MAX_MSG_LEN];
+        char payload[max_payload];
+        //Reads max_payload into our buffer and also saves the number of bytes read.
+        uint32_t payload_length = fread(payload, sizeof(char), max_payload, file);
+        hashdata_t blockhash;
+        get_data_sha(payload, blockhash, payload_length, SHA256_HASH_SIZE);
+        ReplyHeader_t reply_header; // The struct for reply header
+
+        reply_header.this_block = htonl(i);
+        reply_header.block_count = htonl(num_blocks);
+        reply_header.length = htonl(payload_length);
+        reply_header.status = htonl(1);
+
+        memcpy(reply_header.block_hash, blockhash, SHA256_HASH_SIZE);
+        memcpy(reply_header.total_hash, totalhash, SHA256_HASH_SIZE);
+
+        memcpy(msg_buf, &reply_header, REPLY_HEADER_LEN);
+        memcpy(msg_buf+REPLY_HEADER_LEN, &payload, payload_length);
+
+        compsys_helper_writen(connfd, msg_buf, REPLY_HEADER_LEN+payload_length);
     }
-
 }
 
 /*
@@ -690,14 +699,12 @@ void handle_retreive(int connfd, char* request)
  */
 void handle_server_request(int connfd)
 {
-    printf("What goes wrong \n");
     char msg_buf[MAX_MSG_LEN];
     compsys_helper_state_t state;
     compsys_helper_readinitb(&state, connfd);
     compsys_helper_readnb(&state, msg_buf, REQUEST_HEADER_LEN);
     char reply_header[REQUEST_HEADER_LEN];
     memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
-        printf("What goes wrong2 \n");
     char ip[IP_LEN];
     memcpy(ip, &reply_header[0], IP_LEN);
     uint32_t port = ntohl(*(uint32_t*)&reply_header[16]);
@@ -707,8 +714,6 @@ void handle_server_request(int connfd)
     compsys_helper_readnb(&state, msg_buf, length);
     memcpy(request, msg_buf, length);
     request[length] = '\0';
-    printf("Request: %s, command: %d \n", request, command);
-
     if (command == COMMAND_INFORM){
         handle_inform(request);
     }
@@ -745,7 +750,7 @@ void *server_thread()
         clientlen = sizeof(struct sockaddr_storage);
         connfd = accept(listenfd, &clientaddr, &clientlen);
         if (connfd < 0) {
-            fprintf(stderr, "Error accepting connection \n");
+            fprintf(stderr, "Error when accepting connection\n");
             close(connfd);
             continue; 
         }

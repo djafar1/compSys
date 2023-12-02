@@ -377,10 +377,8 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
 }
 
 void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
-    //We free the intial our adress in the network since
     //The reply_body/payload from the server includes our address
-    //So when we go into the for loop we add it back in the order the send it
-    free(network[0]);
+    //So when we go into the for loop we add it back in the order the we receive it from the server peer
     //The lenght of the payload divided by 20 is equal to the amount of peers in the network
     peer_count = reply_lenght/20;
     //Realloc more space for the network
@@ -401,7 +399,10 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
         memcpy(NewAdress->ip, ip, IP_LEN);
         memcpy(NewAdress->port, portstr, PORT_LEN);
         network[i] = NewAdress;
-        printf("New network added ip: %s, port: %s \n", NewAdress->ip, NewAdress->port);
+        //printf("New network added ip: %s, port: %s \n", NewAdress->ip, NewAdress->port);
+    }
+    for (uint32_t i=0; i<peer_count; i++){
+        printf("First adress in network: %s:%s \n", network[i]->ip, network[i]->port);
     }
 }
 
@@ -421,7 +422,6 @@ void* client_thread(void* thread_args)
 
     // Register the given user
     send_message(*peer_address, COMMAND_REGISTER, "\0");
-
 
     // Update peer_address with random peer from network
     get_random_peer(peer_address);
@@ -734,7 +734,7 @@ void *server_thread()
 
     printf("Starting to listen on %s:%s\n", my_address->ip, my_address->port);
     assert(pthread_mutex_unlock(&network_mutex) == 0);
-
+    
     while (1) {
         // Any incoming calls are handled in a new server thread
         assert(pthread_mutex_lock(&network_mutex) == 0);
@@ -847,6 +847,10 @@ int main(int argc, char **argv)
         pthread_join(client_thread_id, NULL);
     }
     pthread_join(server_thread_id, NULL);
+
+    //If we become a client also, we replace the my_adress pointer
+    //in our network[0], with the reply from the server, so we free it here.
+    free(my_address);
 
     exit(EXIT_SUCCESS);
 }

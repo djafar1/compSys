@@ -422,6 +422,7 @@ void* client_thread(void* thread_args)
     // Register the given user
     send_message(*peer_address, COMMAND_REGISTER, "\0");
 
+
     // Update peer_address with random peer from network
     get_random_peer(peer_address);
 
@@ -674,7 +675,7 @@ void handle_retreive(int connfd, char* request)
         compsys_helper_writen(connfd, file_content, bytes_read);
     } else {
         fprintf(stderr, "File read error \n");
-        exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);  
     }
 
 }

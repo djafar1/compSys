@@ -129,6 +129,44 @@ void get_random_peer(PeerAddress_t* peer_address)
         peer_address->ip, peer_address->port);
 }
 
+void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
+    //The reply_body/payload from the server includes our address
+    //So when we go into the for loop we add it back in the order the we receive it from the server peer
+    //The lenght of the payload divided by 20 is equal to the amount of peers in the network
+    peer_count = reply_lenght/20;
+    //Realloc more space for the network
+    assert(pthread_mutex_lock(&network_mutex) == 0);
+    network = realloc(network, peer_count * sizeof(PeerAddress_t*));
+    if (network == NULL) {
+        fprintf(stderr, "Realloc failed for network\n");
+        assert(pthread_mutex_unlock(&network_mutex) == 0);
+        exit(EXIT_FAILURE);
+    }
+
+    for (uint32_t i=0; i<peer_count; i++){
+        PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
+        char ip[IP_LEN];
+        memcpy(ip, reply_body+(i*20), IP_LEN);
+        char portstr[PORT_LEN];
+        uint32_t port;
+        memcpy(&port, reply_body+(i*20+16), 4);
+        port = ntohl(port);
+        sprintf(portstr, "%d", port);
+        memcpy(NewAdress->ip, ip, IP_LEN);
+        memcpy(NewAdress->port, portstr, PORT_LEN);
+        network[i] = NewAdress;
+    }
+    assert(pthread_mutex_unlock(&network_mutex) == 0);
+
+    assert(pthread_mutex_lock(&network_mutex) == 0);
+    printf("Got network:");
+    for (uint32_t i = 0; i < peer_count; i++){
+        printf(" %s:%s,", network[i]->ip, network[i]->port);
+    }
+    printf("\n");
+    assert(pthread_mutex_unlock(&network_mutex) == 0);
+}
+
 /*
  * Send a request message to another peer on the network. Unless this is 
  * specifically an 'inform' message as described in the assignment handout, a 
@@ -375,45 +413,6 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     free(reply_body);
     close(peer_socket);
 }
-
-void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
-    //The reply_body/payload from the server includes our address
-    //So when we go into the for loop we add it back in the order the we receive it from the server peer
-    //The lenght of the payload divided by 20 is equal to the amount of peers in the network
-    peer_count = reply_lenght/20;
-    //Realloc more space for the network
-    assert(pthread_mutex_lock(&network_mutex) == 0);
-    network = realloc(network, peer_count * sizeof(PeerAddress_t*));
-    if (network == NULL) {
-        fprintf(stderr, "Realloc failed for network\n");
-        assert(pthread_mutex_unlock(&network_mutex) == 0);
-        exit(EXIT_FAILURE);
-    }
-
-    for (uint32_t i=0; i<peer_count; i++){
-        PeerAddress_t* NewAdress = malloc(sizeof(PeerAddress_t));
-        char ip[IP_LEN];
-        memcpy(ip, reply_body+(i*20), IP_LEN);
-        char portstr[PORT_LEN];
-        uint32_t port;
-        memcpy(&port, reply_body+(i*20+16), 4);
-        port = ntohl(port);
-        sprintf(portstr, "%d", port);
-        memcpy(NewAdress->ip, ip, IP_LEN);
-        memcpy(NewAdress->port, portstr, PORT_LEN);
-        network[i] = NewAdress;
-    }
-    assert(pthread_mutex_unlock(&network_mutex) == 0);
-
-    assert(pthread_mutex_lock(&network_mutex) == 0);
-    printf("Got network:");
-    for (uint32_t i = 0; i < peer_count; i++){
-        printf(" %s:%s,", network[i]->ip, network[i]->port);
-    }
-    printf("\n");
-    assert(pthread_mutex_unlock(&network_mutex) == 0);
-}
-
 /*
  * Function to act as thread for all required client interactions. This thread 
  * will be run concurrently with the server_thread but is finite in nature.
@@ -762,7 +761,7 @@ void *server_thread()
         // Any incoming calls are handled in a new server thread
         //assert(pthread_mutex_lock(&network_mutex) == 0);
         clientlen = sizeof(struct sockaddr_storage);
-        connfd = accept(listenfd, &clientaddr, &clientlen);
+        connfd = accept(listenfd, (struct sockaddr*)&clientaddr, &clientlen);
         if (connfd < 0) {
             fprintf(stderr, "Error when accepting connection\n");
             close(connfd);
@@ -881,6 +880,7 @@ int main(int argc, char **argv)
         free(network[i]);
     }
     free(network);
-
+    free(retrieving_files);
+    printf("Does it even go to here? \n");
     exit(EXIT_SUCCESS);
 }

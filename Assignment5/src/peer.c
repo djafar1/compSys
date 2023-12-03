@@ -205,6 +205,7 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     strncpy(request_header.ip, my_address->ip, IP_LEN);
     request_header.port = htonl(atoi(my_address->port));
     request_header.command = htonl(command);
+    // Distinquish between inform or request and register.
     if (command == COMMAND_INFORM){
         request_header.length = htonl(20);
     }
@@ -225,6 +226,7 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     else {
         compsys_helper_writen(peer_socket, msg_buf, REQUEST_HEADER_LEN+strlen(request_body));
     }
+
     // We don't expect replies to inform messages so we're done here
     if (command == COMMAND_INFORM)
     {
@@ -324,21 +326,6 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
         {
             if (payload_hash[i] != block_hash[i])
             {
-                /*
-                printf("Payload hash: ");
-                for (size_t j = 0; j < SHA256_HASH_SIZE; j++) {
-                    printf("%02x", payload_hash[j]);
-                }
-                printf("\n");
-
-                printf("Block hash: ");
-                for (size_t j = 0; j < SHA256_HASH_SIZE; j++) {
-                    printf("%02x", block_hash[j]);
-                }
-                printf("\n");
-                
-                printf("The size of the paylod: %d", sizeof(payload));
-                */
                 fprintf(stdout, "Payload hash does not match specified\n");
                 close(peer_socket);
                 return;
@@ -400,8 +387,7 @@ void send_message(PeerAddress_t peer_address, int command, char* request_body)
     {
         if (command == COMMAND_REGISTER)
         {
-            // Your code here. This code has been added as a guide, but feel 
-            // free to add more, or work in other parts of the code
+            // Calls our helper function to decode and update global variables
             handle_reply_fromserver(reply_body, reply_length);
         }
     } 

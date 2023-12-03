@@ -492,9 +492,6 @@ void inform_peers(char* client_ip, int client_port_int){
  */
 void handle_register(int connfd, char* client_ip, int client_port_int)
 {
-    // Your code here. This function has been added as a guide, but feel free 
-    // to add more, or work in other parts of the code
-
     //Basically when a another peer / client writes to us
     //we act as a server, so it wants to register with us
     //then we ofc register the 
@@ -505,6 +502,9 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
     memcpy(new_adress->port, portstr, PORT_LEN);
     int exist = 0;
     uint32_t status;
+
+    printf("Got registration message from %s:%s\n", new_adress->ip, new_adress->port);
+
     for (uint32_t i = 0; i < peer_count; i++)
     {   
         assert(pthread_mutex_lock(&network_mutex) == 0);
@@ -529,6 +529,11 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
 
         //Send reply header back to server
         compsys_helper_writen(connfd, &reply_header, REPLY_HEADER_LEN);
+
+        printf("Cannot register peer %s:%s, already exists\n", new_adress->ip, new_adress->port);
+
+        //Free the allocated memory for the new_adress
+        free(new_adress);
     }
     //If the case that the peer doesn't already exists
     if (exist == 0){
@@ -563,16 +568,9 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
         reply_header.length = htonl(sizeof(NetworkAddress_t) * peer_count);
         hashdata_t hash;
         get_data_sha((char*)payload, hash, sizeof(NetworkAddress_t) * peer_count, SHA256_HASH_SIZE);
+
         memcpy(reply_header.block_hash, hash, SHA256_HASH_SIZE);
         memcpy(reply_header.total_hash, hash, SHA256_HASH_SIZE);
-
-        //Just because we wanted to check whether the hash worked or not:
-        /*
-        printf("Calculated Payload hash: ");
-        for (int i = 0; i < SHA256_HASH_SIZE; i++) {
-            printf("%02x", hash[i]);
-        }
-        printf("\n"); */
 
         memcpy(msg_buf, &reply_header, REPLY_HEADER_LEN);
         memcpy(msg_buf+REPLY_HEADER_LEN, &payload, sizeof(payload));
@@ -581,15 +579,18 @@ void handle_register(int connfd, char* client_ip, int client_port_int)
 
         // Using helper function to inform other peers about the newly added peer.
         inform_peers(client_ip, client_port_int);
+
+        printf("Registered new peer %s:%s\n", new_adress->ip, new_adress->port);
+
     }
     //Just to print the complete network.
     assert(pthread_mutex_lock(&network_mutex) == 0);
+    printf("Network is:");
     for (uint32_t i = 0; i < peer_count; i++){
-        printf("New network added ip: %s, port: %s \n", network[i]->ip, network[i]->port);
+        printf(" %s:%s,", network[i]->ip, network[i]->port);
     }
+    printf("\n");
     assert(pthread_mutex_unlock(&network_mutex) == 0);
-
-
 }
 
 /*
@@ -604,13 +605,6 @@ void handle_inform(char* request)
     char ip_address[IP_LEN];
     memcpy(ip_address, &request[0], IP_LEN);
     uint32_t port_int = ntohl(*(uint32_t*)&request[IP_LEN]); 
-
-    //Print just to check it works correctly
-    /*
-    printf("IP Address: %s\n", ip_address);
-    printf("Port: %u\n", port_int);
-    */
-
     PeerAddress_t* new_adress = malloc(sizeof(PeerAddress_t));
     char portstr[PORT_LEN];
     sprintf(portstr, "%d", port_int);
@@ -653,35 +647,62 @@ void handle_inform(char* request)
  */
 void handle_retreive(int connfd, char* request)
 {
-    char msg_buf[MAX_MSG_LEN];
-    ReplyHeader_t reply_header; 
-
-    //memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
-
-    // Check if the requested file exists in your system
-    // File exists, handle retrieving the file content and sending it back to the client    
+    // Check if the requested file exists
     FILE* file = fopen(request, "r");
     if (file == NULL) {
-        fprintf(stderr, "File open error \n");
-        exit(EXIT_FAILURE);
+        ReplyHeader_t reply_header; 
+        reply_header.status = htonl(STATUS_BAD_REQUEST); // The status 
+        reply_header.block_count = htonl(1);
+        reply_header.this_block = htonl(0);   
+        reply_header.length = htonl(0);
+        hashdata_t hash;
+        get_data_sha("", hash, 0, SHA256_HASH_SIZE);
+        memcpy(reply_header.block_hash, hash, SHA256_HASH_SIZE);
+        memcpy(reply_header.total_hash, hash, SHA256_HASH_SIZE);
+
+        //Send reply header back to server
+        compsys_helper_writen(connfd, &reply_header, REPLY_HEADER_LEN);
+        fprintf(stderr, "Bad Request (i.e. the request is coherent but cannot be servered as the file doesn't exist or is busy)\n");
+        return;
     } 
+    // Number of bytes in the file
     fseek(file, 0, SEEK_END);
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    printf("File size: %ld bytes\n", file_size);
+    //Dividing the (file_size+MAX_Payload) with Max_Payload, ensures that it rounds up to the nearest integer
+    //Also in case that it is a small file it will ensure that atleast one block is made for it.
+    uint32_t max_payload = MAX_MSG_LEN-REPLY_HEADER_LEN;
+    uint32_t num_blocks = (file_size + max_payload) / (max_payload); 
+    hashdata_t totalhash;
+    get_file_sha(request, totalhash, SHA256_HASH_SIZE);
 
-    // Read file content and send it back to the client
-    char file_content[MAX_MSG_LEN];
-    size_t bytes_read = fread(file_content, sizeof(char), MAX_MSG_LEN, file);
-    fclose(file);
-    if (bytes_read > 0) {
-        //compsys_helper_writen(connfd, file_content, bytes_read);
-    } else {
-        fprintf(stderr, "File read error \n");
-        exit(EXIT_FAILURE);  
+    printf("Sending request data from %s\n", request);
+    for (uint32_t i = 0; i < num_blocks; i++)
+    {
+        char msg_buf[MAX_MSG_LEN];
+        char payload[max_payload];
+        //Reads max_payload into our buffer and also saves the number of bytes read.
+        uint32_t payload_length = fread(payload, sizeof(char), max_payload, file);
+        hashdata_t blockhash;
+        get_data_sha(payload, blockhash, payload_length, SHA256_HASH_SIZE);
+        ReplyHeader_t reply_header; // The struct for reply header
+
+        reply_header.this_block = htonl(i);
+        reply_header.block_count = htonl(num_blocks);
+        reply_header.length = htonl(payload_length);
+        reply_header.status = htonl(1);
+
+        memcpy(reply_header.block_hash, blockhash, SHA256_HASH_SIZE);
+        memcpy(reply_header.total_hash, totalhash, SHA256_HASH_SIZE);
+
+        memcpy(msg_buf, &reply_header, REPLY_HEADER_LEN);
+        memcpy(msg_buf+REPLY_HEADER_LEN, &payload, payload_length);
+
+        compsys_helper_writen(connfd, msg_buf, REPLY_HEADER_LEN+payload_length);
+        printf("Sending reply %d/%d with payload lenghth of %d\n", i+1,num_blocks, payload_length);
     }
-
+    fclose(file);
 }
 
 /*
@@ -690,14 +711,12 @@ void handle_retreive(int connfd, char* request)
  */
 void handle_server_request(int connfd)
 {
-    printf("What goes wrong \n");
     char msg_buf[MAX_MSG_LEN];
     compsys_helper_state_t state;
     compsys_helper_readinitb(&state, connfd);
     compsys_helper_readnb(&state, msg_buf, REQUEST_HEADER_LEN);
     char reply_header[REQUEST_HEADER_LEN];
     memcpy(reply_header, msg_buf, REQUEST_HEADER_LEN);
-        printf("What goes wrong2 \n");
     char ip[IP_LEN];
     memcpy(ip, &reply_header[0], IP_LEN);
     uint32_t port = ntohl(*(uint32_t*)&reply_header[16]);
@@ -707,8 +726,6 @@ void handle_server_request(int connfd)
     compsys_helper_readnb(&state, msg_buf, length);
     memcpy(request, msg_buf, length);
     request[length] = '\0';
-    printf("Request: %s, command: %d \n", request, command);
-
     if (command == COMMAND_INFORM){
         handle_inform(request);
     }
@@ -745,7 +762,7 @@ void *server_thread()
         clientlen = sizeof(struct sockaddr_storage);
         connfd = accept(listenfd, &clientaddr, &clientlen);
         if (connfd < 0) {
-            fprintf(stderr, "Error accepting connection \n");
+            fprintf(stderr, "Error when accepting connection\n");
             close(connfd);
             continue; 
         }

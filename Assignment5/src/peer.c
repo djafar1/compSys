@@ -402,13 +402,16 @@ void handle_reply_fromserver(char* reply_body, uint32_t reply_lenght){
         memcpy(NewAdress->ip, ip, IP_LEN);
         memcpy(NewAdress->port, portstr, PORT_LEN);
         network[i] = NewAdress;
-        //printf("New network added ip: %s, port: %s \n", NewAdress->ip, NewAdress->port);
-    }
-    for (uint32_t i=0; i<peer_count; i++){
-        printf("First adress in network: %s:%s \n", network[i]->ip, network[i]->port);
     }
     assert(pthread_mutex_unlock(&network_mutex) == 0);
 
+    assert(pthread_mutex_lock(&network_mutex) == 0);
+    printf("Got network:");
+    for (uint32_t i = 0; i < peer_count; i++){
+        printf(" %s:%s,", network[i]->ip, network[i]->port);
+    }
+    printf("\n");
+    assert(pthread_mutex_unlock(&network_mutex) == 0);
 }
 
 /*
@@ -601,7 +604,6 @@ void handle_inform(char* request)
 {
     // In our code we assume that the first 16 bytes are for the IP
     // and the last 4 is for the port, so are allowed to hardcode it.
-    
     char ip_address[IP_LEN];
     memcpy(ip_address, &request[0], IP_LEN);
     uint32_t port_int = ntohl(*(uint32_t*)&request[IP_LEN]); 
@@ -636,9 +638,7 @@ void handle_inform(char* request)
         printf("The peer: %s:%s is already registered in our network \n", new_adress->ip, new_adress->port);
         free(new_adress);
         assert(pthread_mutex_unlock(&network_mutex) == 0);
-
     }
-
 }
 
 /*
@@ -647,6 +647,7 @@ void handle_inform(char* request)
  */
 void handle_retreive(int connfd, char* request)
 {
+
     // Check if the requested file exists
     FILE* file = fopen(request, "r");
     if (file == NULL) {
@@ -733,6 +734,7 @@ void handle_server_request(int connfd)
         handle_register(connfd, ip, port);
     }
     else if(command == COMMAND_RETREIVE){
+        printf("Got request message from %s:%d\n", ip, port);
         handle_retreive(connfd, request);
     }
 }

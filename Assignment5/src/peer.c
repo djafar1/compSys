@@ -414,16 +414,16 @@ void* client_thread(void* thread_args)
     struct PeerAddress *peer_address = thread_args;
 
     // Register the given user
-    send_message(*peer_address, COMMAND_REGISTER, "\0");
+    //send_message(*peer_address, COMMAND_REGISTER, "\0");
 
     // Update peer_address with random peer from network
-    get_random_peer(peer_address);
+    //get_random_peer(peer_address);
 
     // Retrieve the smaller file, that doesn't not require support for blocks
     send_message(*peer_address, COMMAND_RETREIVE, "tiny.txt");
 
     // Update peer_address with random peer from network
-    get_random_peer(peer_address);
+    //get_random_peer(peer_address);
 
     // Retrieve the larger file, that requires support for blocked messages
     send_message(*peer_address, COMMAND_RETREIVE, "hamlet.txt");
@@ -441,7 +441,7 @@ void* client_thread(void* thread_args)
             break;
         }
         // Update peer_address with random peer from network        
-        get_random_peer(peer_address);
+        //get_random_peer(peer_address);
 
         //Retrieve the larger file, that the client/peer request.
         send_message(*peer_address, COMMAND_RETREIVE, to_get);

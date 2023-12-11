@@ -14,9 +14,9 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         int opcode = instructions & 0x7f; 
         int funct3 = (instructions >> 12) & 0x7;
         switch (opcode){
-            case (0x13):
+            case (OPIMM):
                 switch (funct3){
-                    case 0x0:
+                    case :
                         printf("ADDI \n");
                         break;
                     case 0x1:

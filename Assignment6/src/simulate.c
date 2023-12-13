@@ -124,21 +124,27 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 switch (funct3){
                     case BEQ:
                         printf("BEQ \n");
+                        if (reg[rs1] == reg[rs2]){pc = pc+4;};
                         break;
                     case BNE:
                         printf("BNE \n");
+                        if (reg[rs1] /= reg[rs2]){pc = pc + (immediate*4);};
                         break;
                     case BLT:
                         printf("BLT \n");
+                        if(reg[rs1] >= reg[rs2]){pc = pc+4;};
                         break;
                     case BGE:
                         printf("BGE \n");
+                        if(reg[rs1] <= reg[rs2]){pc = pc + (immediate*4);};
                         break;
                     case BLTU:
                         printf("BLTU \n");
+                        if((unsigned int)reg[rs1] >= (unsigned int)reg[rs2]){pc = pc+4;};
                         break;
                     case BGEU:
                         printf("BGEU \n");
+                        if((unsigned int)reg[rs1] <= (unsigned int)reg[rs2]){pc = pc + (immediate*4);};
                         break;
                     default:
                         break;

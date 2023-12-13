@@ -35,7 +35,7 @@
 #define LOAD 0x3
     #define LB 0x0
     #define LH 0x1
-    #define Lw 0x2
+    #define LW 0x2
     #define LBU 0x3
     #define LHU 0x4
 

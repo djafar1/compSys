@@ -86,16 +86,21 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
 
                 break;
             case(STORE):
-                immediate = (instructions >> 20) & 0xFE;
+                int imm11_5 = (instructions >> 25) & 0x7F;
+                int imm4_0 = (instructions >> 7) & 0x1F;
+                immediate = (imm11_5 << 5) | imm4_0;
                 switch (funct3){
                     case SB:
                         printf("SB \n");
+                        memory_wr_b(mem, rs1+immediate, reg[rs2]);
                         break;
                     case SH:
                         printf("SH \n");
+                        memory_wr_b(mem, rs1+immediate, reg[rs2]);
                         break;
                     case SW:
                         printf("SW \n");
+                        memory_wr_b(mem, rs1+immediate, reg[rs2]);
                         break;
                     default:
                         break;

@@ -1,5 +1,10 @@
 #include "simulate.h"
 
+
+
+
+
+
 long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE *log_file) {
     int reg[32];
     int pc = start_addr;
@@ -14,47 +19,73 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         int opcode = instructions & 0x7f; 
         int funct3 = (instructions >> 12) & 0x7;
         int funct7 = (instructions >> 25) & 0x7f;
+        int immediate = 0;
 
+        int rd = (instructions >> 7) & 0x1F;
+        int rs1 = (instructions >> 15) & 0x1F;
+        int rs2 = (instructions >> 20) & 0x1F;
         switch (opcode){
             case (OPIMM):
+                immediate = (instructions >> 20) & 0xFFF;
                 switch (funct3){
                     case ADDI:
-                        printf("ADDI \n");
+                        printf("ADDI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        reg[rd] = reg[rs1] + immediate;
                         break;
                     case SLLI:
-                        printf("SLLI \n");
+                        // Shift left logical immediate
+                        printf("SLLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        reg[rd] = reg[rs1] << immediate;
                         break;
                     case SLTI:
-                        printf("SLTI \n");
+                        // Set less than immediate
+                        printf("SLTI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        reg[rd] = reg[rs1] < immediate ? 1 : 0;
                         break;
                     case SLTIU:
-                        printf("SLTIU \n");
+                        // Set less than immediate unsigned
+                        printf("SLTIU rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        reg[rd] = (unsigned int)reg[rs1] < (unsigned int)immediate ? 1 : 0;
                         break;
                     case XORI:
-                        printf("XORI \n");
+                        // XOR immediate
+                        printf("XORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        reg[rd] = reg[rs1] ^ immediate;
                         break;
                     case SRI:
-                        switch (SRLI){
+                        switch (funct7){
                             case SRLI:
-                                printf("SRLI \n");
+                                // Shift right logical immediate
+                                printf("SRLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                                reg[rd] = reg[rs1] >> immediate;
                                 break;
                             case SRAI:
-                                printf("SRAI \n");
+                                // Shift right arithmetic immediate
+                                printf("SRAI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                                reg[rd] = reg[rs1] >> immediate; // Note: Arithmetic shift right
                                 break;
                             default:
                                 break;
                         }
+                        break;
                     case ORI:
-                        printf("ORI \n");
+                        // OR immediate
+                        printf("ORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        reg[rd] = reg[rs1] | immediate;
                         break;
                     case ANDI:
-                        printf("ANDI \n");
-                        break;   
-                default:
-                    break;
+                        // AND immediate
+                        printf("ANDI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        reg[rd] = reg[rs1] & immediate;
+                        break;
+                    default:
+                        // Handle unknown funct3 for OPIMM instructions
+                        break;
                 }
+
                 break;
             case(STORE):
+                immediate = (instructions >> 20) & 0xFE;
                 switch (funct3){
                     case SB:
                         printf("SB \n");
@@ -111,7 +142,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     default:
                         break;
                 }
-            case(0X33):
+            case(0X33): // CHecking WHETHER IT IS OP or EXTENTIOn?
                 if (funct7 == MULDIVREM){
                     switch (funct3){
                         case MUL:
@@ -152,9 +183,10 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                                 case SUB:
                                     printf("REMU \n");
                                     break;
-                            default:
-                                break;
+                                default:
+                                    break;
                             }
+                            break;
                         case SLL:
                             printf("SLL \n");
                             break;
@@ -170,19 +202,20 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                         case SRLA:
                             switch (funct7){
                                 case SRL:
-                                    printf("REMU \n");
+                                    printf("SRL \n");
                                     break;
                                 case SRA:
-                                    printf("REMU \n");
+                                    printf("SRA \n");
                                     break;
-                            default:
-                                break;
+                                default:
+                                    break;
                             }
+                            break;
                         case OR:
-                            printf("XOR \n");
+                            printf("OR \n");
                             break;
                         case AND:
-                            printf("XOR \n");
+                            printf("AND \n");
                             break;
                         default:
                             break;

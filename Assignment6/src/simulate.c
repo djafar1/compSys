@@ -16,14 +16,14 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
             printf("Null What are we printing: %x \n", instructions);
             return;
         }
-        int opcode = instructions & 0x7f; 
-        int funct3 = (instructions >> 12) & 0x7;
-        int funct7 = (instructions >> 25) & 0x7f;
-        int immediate = 0;
+        __int32_t opcode = instructions & 0x7f; 
+        __int32_t funct3 = (instructions >> 12) & 0x7;
+        __int32_t funct7 = (instructions >> 25) & 0x7f;
+        __int32_t immediate = 0;
 
-        int rd = (instructions >> 7) & 0x1F;
-        int rs1 = (instructions >> 15) & 0x1F;
-        int rs2 = (instructions >> 20) & 0x1F;
+        __int32_t rd = (instructions >> 7) & 0x1F;
+        __int32_t rs1 = (instructions >> 15) & 0x1F;
+        __int32_t rs2 = (instructions >> 20) & 0x1F;
         switch (opcode){
             case (OPIMM):
                 immediate = (instructions >> 20) & 0xFFF;
@@ -40,12 +40,13 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     case SLTI:
                         // Set less than immediate
                         printf("SLTI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
-                        reg[rd] = reg[rs1] < immediate ? 1 : 0;
+                        reg[rd] = reg[rs1] < immediate ? 1 : 0; 
                         break;
                     case SLTIU:
                         // Set less than immediate unsigned
                         printf("SLTIU rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
-                        reg[rd] = (unsigned int)reg[rs1] < (unsigned int)immediate ? 1 : 0;
+                        reg[rd] = (unsigned int)reg[rs1] < (unsigned int)immediate ? 1 
+                        : 0;
                         break;
                     case XORI:
                         // XOR immediate
@@ -178,44 +179,54 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                         case ADDorSUB:
                             switch (funct7){
                                 case ADD:
-                                    printf("REMU \n");
+                                    printf("ADD rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                                    reg[rd] = reg[rs1] + reg[rs2];
                                     break;
                                 case SUB:
-                                    printf("REMU \n");
+                                    printf("sub rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                                    reg[rd] = reg[rs1] - reg[rs2];
                                     break;
                                 default:
                                     break;
                             }
                             break;
                         case SLL:
-                            printf("SLL \n");
+                            printf("SLL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1] << reg[rs2];
                             break;
                         case SLT:
-                            printf("SLT \n");
+                            printf("SLT rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1] < reg[rs2] ? 1 : 0; 
                             break;
                         case SLTU:
-                            printf("SLTU \n");
+                            printf("SLTU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = (unsigned int)reg[rs1] < (unsigned int)reg[rs2] ? 1 : 0; 
                             break;
                         case XOR:
-                            printf("XOR \n");
+                            printf("XOR rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1] ^ reg[rs2];
                             break;
                         case SRLA:
                             switch (funct7){
                                 case SRL:
-                                    printf("SRL \n");
+                                    printf("SRL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                                    reg[rd] = reg[rs1] << reg[rs2];
                                     break;
                                 case SRA:
-                                    printf("SRA \n");
+                                    printf("SRA rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                                    reg[rd] = reg[rs1] >> reg[rs2];
                                     break;
                                 default:
                                     break;
                             }
                             break;
                         case OR:
-                            printf("OR \n");
+                            printf("OR rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1] | reg[rs2];
                             break;
                         case AND:
-                            printf("AND \n");
+                            printf("AND rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1] & reg[rs2];
                             break;
                         default:
                             break;

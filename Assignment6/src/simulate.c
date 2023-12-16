@@ -1,8 +1,19 @@
 #include "simulate.h"
 
+__int32_t sign_extend(int bit_width, __int32_t value) {
+    int sign_bit = bit_width - 1;
+    __int32_t sign_mask = 1 << sign_bit;
 
-
-
+    // Check the sign bit
+    if (value & sign_mask) {
+        // Perform sign extension by filling with 1s
+        __int32_t sign_extension = 0xFFFFFFFF << bit_width;
+        return value | sign_extension;
+    } else {
+        // Positive value, no sign extension needed
+        return value;
+    }
+}
 
 
 long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE *log_file) {
@@ -103,36 +114,43 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 switch (funct3){
                     case SB:
                         printf("SB \n");
-                        memory_wr_b(mem, rs1+immediate, reg[rs2]);
+                        memory_wr_b(mem, reg[rs1]+immediate, reg[rs2]);
                         break;
                     case SH:
                         printf("SH \n");
-                        memory_wr_b(mem, rs1+immediate, reg[rs2]);
+                        memory_wr_h(mem, reg[rs1]+immediate, reg[rs2]);
                         break;
                     case SW:
                         printf("SW \n");
-                        memory_wr_b(mem, rs1+immediate, reg[rs2]);
+                        memory_wr_w(mem, reg[rs1]+immediate, reg[rs2]);
                         break;
                     default:
                         break;
                 }
                 break;
             case(LOAD):
+                immediate = (instructions >> 20) & 0xFFF;
                 switch (funct3){
                     case LB:
                         printf("LB \n");
+                        reg[rd] = sign_extend(8, memory_rd_b(mem, reg[rs1] + immediate));
                         break;
                     case LH:
                         printf("LH \n");
+                        reg[rd] = sign_extend(16, memory_rd_h(mem, reg[rs1] + immediate));
                         break;
                     case LW:
+                        printf("Yes : %d \n", reg[rd]);
                         printf("LW \n");
+                        reg[rd] = memory_rd_w(mem, reg[rs1] + immediate);
                         break;
-                    case LBU:
+                    case LBU: 
                         printf("LBU \n");
+                        reg[rd] = memory_rd_b(mem, reg[rs1] + immediate) & 0xFFFF; // zero extend
                         break;
-                    case LHU:
+                    case LHU: 
                         printf("LHU \n");
+                        reg[rd] = memory_rd_h(mem, reg[rs1] + immediate >> 1) & 0xFFFF; // zero extend
                         break;
                     default:
                         break;
@@ -146,6 +164,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 // Immediate in the correct order. We left shift to make space for the others.
                 immediate = (imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1) ;
 
+                immediate = sign_extend(12, immediate);
                 // In every case we take pc = pc + (immediate * 4) 
                 // 4 * 32-bit instructions == 16 bytes.
                 switch (funct3){
@@ -183,6 +202,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                         case MUL:
                             printf("MUL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1]*reg[rs2];
+                            break;
                         case MULH:
                             printf("MULH \n");
                             break;

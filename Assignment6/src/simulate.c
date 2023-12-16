@@ -26,6 +26,16 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         __int32_t rs1 = (instructions >> 15) & 0x1F;
         __int32_t rs2 = (instructions >> 20) & 0x1F;
         switch (opcode){
+            case (JALR):
+                immediate = (instructions >> 20) & 0xFFF;
+                printf("JALR rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                int32_t target_address = reg[rs1] + immediate;
+                target_address &= 0;
+                if (rd != 0){
+                    reg[rd] = pc + 4;
+                }
+                pc = target_address;
+                break;
             case (OPIMM):
                 immediate = (instructions >> 20) & 0xFFF;
                 switch (funct3){

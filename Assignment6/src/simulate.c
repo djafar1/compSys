@@ -154,12 +154,12 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     default:
                         break;
                 }
-            case(0X33): // CHecking WHETHER IT IS OP or EXTENTIOn?
+            case(0X33): // Checking whether it is an OP or EXTENTION
                 if (funct7 == MULDIVREM){
                     switch (funct3){
                         case MUL:
-                            printf("MUL \n");
-                            break;
+                            rintf("DIV rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1]*reg[rs2];
                         case MULH:
                             printf("MULH \n");
                             break;
@@ -170,16 +170,20 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                             printf("MULHU \n");
                             break;
                         case DIV:
-                            printf("DIV \n");
+                            printf("DIV rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1]/reg[rs2];
                             break;
                         case DIVU:
-                            printf("DIVU \n");
+                            printf("DIVU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = (unsigned int)reg[rs1]/(unsigned int)reg[rs2];;
                             break;
                         case REM:
-                            printf("REM \n");
+                            printf("REM rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = reg[rs1]%reg[rs2];
                             break;
                         case REMU:
-                            printf("REMU \n");
+                            printf("REMU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            reg[rd] = (unsigned int)reg[rs1]%(unsigned int)reg[rs2];;
                             break;
                         default:
                             break;

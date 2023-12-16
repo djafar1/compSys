@@ -19,7 +19,8 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         __int32_t opcode = instructions & 0x7f; 
         __int32_t funct3 = (instructions >> 12) & 0x7;
         __int32_t funct7 = (instructions >> 25) & 0x7f;
-        __int32_t immediate = 0;
+        __int32_t immediate;
+        __int32_t imm12, imm10_5, imm4_1, imm11, imm4_0, imm11_5;
 
         __int32_t rd = (instructions >> 7) & 0x1F;
         __int32_t rs1 = (instructions >> 15) & 0x1F;
@@ -86,8 +87,8 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
 
                 break;
             case(STORE):
-                int imm11_5 = (instructions >> 25) & 0x7F;
-                int imm4_0 = (instructions >> 7) & 0x1F;
+                imm11_5 = (instructions >> 25) & 0x7F;
+                imm4_0 = (instructions >> 7) & 0x1F;
                 immediate = (imm11_5 << 5) | imm4_0;
                 switch (funct3){
                     case SB:
@@ -105,6 +106,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     default:
                         break;
                 }
+                break;
             case(LOAD):
                 switch (funct3){
                     case LB:
@@ -125,19 +127,29 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     default:
                         break;
                 }
+                break;
             case(BRANCH):
+                imm12 = (instructions >> 31) & 0x1; // immediate value of 31?
+                imm10_5 = (instructions >> 25) & 0x3F; // immediate value of 30:25
+                imm4_1 = (instructions >> 8) & 0xF; // immediate value of 11:8
+                imm11 = (instructions >> 7) & 0x1; // immediate value of 7
+                // Immediate in the correct order. We left shift to make space for the others.
+                immediate = (imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1) ;
+
+                // In every case we take pc = pc + (immediate * 4) 
+                // 4 * 32-bit instructions == 16 bytes.
                 switch (funct3){
                     case BEQ:
                         printf("BEQ \n");
-                        if (reg[rs1] == reg[rs2]){pc = pc+4;};
+                        if (reg[rs1] == reg[rs2]){pc = pc + (immediate*4);};
                         break;
                     case BNE:
                         printf("BNE \n");
-                        if (reg[rs1] /= reg[rs2]){pc = pc + (immediate*4);};
+                        if (reg[rs1] != reg[rs2]){pc = pc + (immediate*4);};
                         break;
                     case BLT:
                         printf("BLT \n");
-                        if(reg[rs1] >= reg[rs2]){pc = pc+4;};
+                        if(reg[rs1] >= reg[rs2]){pc = pc + (immediate*4);};
                         break;
                     case BGE:
                         printf("BGE \n");
@@ -145,7 +157,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                         break;
                     case BLTU:
                         printf("BLTU \n");
-                        if((unsigned int)reg[rs1] >= (unsigned int)reg[rs2]){pc = pc+4;};
+                        if((unsigned int)reg[rs1] >= (unsigned int)reg[rs2]){pc = pc + (immediate*4);};
                         break;
                     case BGEU:
                         printf("BGEU \n");
@@ -154,11 +166,12 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     default:
                         break;
                 }
+                break;
             case(0X33): // Checking whether it is an OP or EXTENTION
                 if (funct7 == MULDIVREM){
                     switch (funct3){
                         case MUL:
-                            rintf("DIV rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            printf("MUL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1]*reg[rs2];
                         case MULH:
                             printf("MULH \n");
@@ -247,6 +260,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                             break;
                     }
                 }
+                break;
             default:
                 break;
         }

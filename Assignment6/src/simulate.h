@@ -4,7 +4,7 @@
 #include "memory.h"
 #include "assembly.h"
 #include <stdio.h>
-
+#include <stdint.h>
 #define JALR 0x67
 
 #define LUI 0x37
@@ -36,8 +36,8 @@
     #define LB 0x0
     #define LH 0x1
     #define LW 0x2
-    #define LBU 0x3
-    #define LHU 0x4
+    #define LBU 0x4
+    #define LHU 0x5
 
 #define BRANCH 0x63
     #define BEQ 0x0

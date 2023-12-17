@@ -394,4 +394,4 @@
 394 -- Insn --    104c0:	00a7a023          	sw	a0,0(a5)
 395 -- Insn --    104c4:	00008067          	ret
 
-Simulated 538976297 instructions in 209 ticks (2578833.956938 MIPS)
+Simulated 515 instructions in 2398 ticks (0.214762 MIPS)

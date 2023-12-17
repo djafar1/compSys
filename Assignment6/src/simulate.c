@@ -42,6 +42,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         int32_t  rs1 = (instructions >> 15) & 0x1F;
         int32_t  rs2 = (instructions >> 20) & 0x1F;
 
+
         switch (opcode){
             case (JAL):
                 imm20 = (instructions >> 31) & 0x1;
@@ -95,8 +96,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     case SLTIU:
                         // Set less than immediate unsigned
                         printf("SLTIU rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
-                        reg[rd] = (uint32_t)reg[rs1] < (uint32_t)immediate ? 1 
-                        : 0;
+                        reg[rd] = (uint32_t)reg[rs1] < (uint32_t)immediate ? 1 : 0;
                         break;
                     case XORI:
                         // XOR immediate
@@ -141,7 +141,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 immediate = (imm11_5 << 5) | imm4_0;
                 printf("rs1: %d \n", rs1);
                 printf("Store: reg[rs1]=%d, immediate=%d, reg[rs2]=%d\n", reg[rs1], immediate, reg[rs2]);
-                printf(" target adress to %d \n ", reg[rs1] + immediate);
+                printf(" target adress to store %d \n ", reg[rs1] + immediate);
                 switch (funct3){
                     case SB:
                         printf("SB \n");
@@ -195,10 +195,10 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 imm11 = (instructions >> 7) & 0x1; // immediate value of 7
                 // Immediate in the correct order. We left shift to make space for the others.
                 immediate = (imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1) ;
-                printf("Before sign extension: %d (0x%x)\n", immediate, immediate);
+                printf("Before sign extension: %d\n", immediate);
 
                 immediate = sign_extend(12, immediate);
-                printf("After sign extension: %d (0x%x)\n", immediate, immediate);
+                printf("After sign extension: %d\n", immediate);
 
                 // Bool to whether skip the pc + 4 in the end , then we continue to next iteration
                 bool branchinstruct = false;
@@ -252,12 +252,15 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                             break;
                         case MULH:
                             printf("MULH \n");
+                            reg[rd] = (((long)(long)reg[rs1] * (long)(long)reg[rs2]) >> 32);
                             break;
                         case MULHSU:
                             printf("MULHSU \n");
+                            reg[rd] = (((unsigned long) (unsigned long)reg[rs1] * (unsigned long)(unsigned long)reg[rs2]) >> 32);
                             break;
                         case MULHU:
                             printf("MULHU \n");
+                            reg[rd] = (long)(((long)(long)reg[rs1] * (long)reg[rs2]) >> 32);
                             break;
                         case DIV:
                             printf("DIV rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
@@ -316,7 +319,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                             switch (funct7){
                                 case SRL:
                                     printf("SRL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
-                                    reg[rd] = reg[rs1] >> reg[rs2];
+                                    reg[rd] = reg[rs1] << reg[rs2];
                                     break;
                                 case SRA:
                                     printf("SRA rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
@@ -350,4 +353,5 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         //printf("Opcode value at address %x: %x\n", pc, opcode);
         pc = pc + 4;
     }
+    return;
 }

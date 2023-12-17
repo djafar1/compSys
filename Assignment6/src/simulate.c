@@ -11,11 +11,11 @@ int32_t sign_extend(int bit_width, int32_t value) {
 }
 
 
-int32_t MAX_INSTRUCTIONS = 2090; // For debugging
+//int32_t MAX_INSTRUCTIONS = 2090; // For debugging because it would infinite loop
 
 long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE *log_file) {
     int32_t reg[32];
-    int32_t pc = start_addr;
+    uint32_t pc = start_addr;
     reg[0] = 0x00;
     int32_t instructions = 0;
     int32_t numberofinstruction = 0;
@@ -32,7 +32,6 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         int32_t  funct7 = (instructions >> 25) & 0x7f;
         int32_t  immediate;
         int32_t  imm12, imm10_5, imm4_1, imm11, imm4_0, imm11_5, imm20, imm10_1, imm19_12;
-
         int32_t  rd = (instructions >> 7) & 0x1F;
         int32_t  rs1 = (instructions >> 15) & 0x1F;
         int32_t  rs2 = (instructions >> 20) & 0x1F;
@@ -45,7 +44,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 imm19_12 = (instructions >> 12) & 0xFF;
                 immediate = (imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1);
                 immediate = sign_extend(20, immediate);
-                printf("JAL rd=%d, imm=%d\n", rd, immediate);
+                //printf("JAL rd=%d, imm=%d\n", rd, immediate);
                 if (rd != 0){
                     reg[rd] = pc + 4;
                 }
@@ -54,55 +53,78 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
             case(LUI):
                 immediate = (instructions >> 12) & 0xFFFFF;
                 reg[rd] = immediate << 12;
-                printf("LUI rd=%d, imm=%d\n", rd, immediate);
+                //printf("LUI rd=%d, imm=%d\n", rd, immediate);
                 break;
             case(AUIPC):
                 immediate = (instructions >> 12) & 0xFFFFF;
                 reg[rd] = pc + (immediate << 12);
-                printf("AUIPC rd=%d, imm=%d\n", rd, immediate);
+                //printf("AUIPC rd=%d, imm=%d\n", rd, immediate);
                 break;
             case (JALR):
                 immediate = (instructions >> 20) & 0xFFF;
                 immediate = sign_extend(12, immediate);
-                printf("JALR rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                //printf("JALR rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                 int target_address = (reg[rs1] + immediate) & (~1); 
                 if (rd != 0){
                     reg[rd] = pc + 4;
                 }
                 pc = target_address;
                 continue;
+            case (ECALL):
+                // printf("ECALL, reg[17]: %d, reg[10]: %d\n", reg[17], reg[10]); Debugging
+                switch (funct3)
+                {
+                case (0x0):
+                    switch (reg[17]) // A7
+                    {
+                    case 1:
+                        reg[10] = getchar();
+                        break;
+                    case 2:
+                        putchar(reg[10]);
+                        break;
+                    case 3:
+                        //return numberofinstruction;
+                    default:
+                        break;
+                    }
+                    break;
+                default:
+                    break;
+                }
+                break;
             case (OPIMM):
                 immediate = (instructions >> 20) & 0xFFF;
                 switch (funct3){
                     case ADDI:
-                        printf("ADDI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        //printf("ADDI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] + immediate;
-                        printf("Updated reg[%d] = %d\n", rd, reg[rd]);
+                        //printf("Updated reg[%d] = %d\n", rd, reg[rd]);
                         break;
                     case SLLI:
-                        printf("SLLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        //printf("SLLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] << immediate;
                         break;
                     case SLTI:
-                        printf("SLTI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        //printf("SLTI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] < immediate ? 1 : 0; 
                         break;
                     case SLTIU:
-                        printf("SLTIU rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        //printf("SLTIU rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = (uint32_t)reg[rs1] < (uint32_t)immediate ? 1 : 0;
                         break;
                     case XORI:
-                        printf("XORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        //printf("XORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] ^ immediate;
                         break;
                     case SRI:
                         switch (funct7){
                             case SRLI:
-                                printf("SRLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                                //printf("SRLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                                 reg[rd] = reg[rs1] >> immediate;
                                 break;
                             case SRAI:
-                                printf("SRAI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                                //printf("SRAI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                                 reg[rd] = reg[rs1] >> immediate; 
                                 break;
                             default:
@@ -110,11 +132,11 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                         }
                         break;
                     case ORI:
-                        printf("ORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        //printf("ORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] | immediate;
                         break;
                     case ANDI:
-                        printf("ANDI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
+                        //printf("ANDI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] & immediate;
                         break;
                     default:
@@ -126,19 +148,19 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 imm4_0 = (instructions >> 7) & 0x1F;
                 immediate = (imm11_5 << 5) | imm4_0;
                 //printf("rs1: %d \n", rs1); //for debugging
-                printf("Store: reg[rs1]=%d, immediate=%d, reg[rs2]=%d\n", reg[rs1], immediate, reg[rs2]);
+                //printf("Store: reg[rs1]=%d, immediate=%d, reg[rs2]=%d\n", reg[rs1], immediate, reg[rs2]);
                 //printf(" target adress to store %d \n ", reg[rs1] + immediate); //for debugging
                 switch (funct3){
                     case SB:
-                        printf("SB \n");
+                        //printf("SB \n");
                         memory_wr_b(mem, reg[rs1]+immediate, reg[rs2]);
                         break;
                     case SH:
-                        printf("SH \n");
+                        //printf("SH \n");
                         memory_wr_h(mem, reg[rs1]+immediate, reg[rs2]);
                         break;
                     case SW:
-                        printf("SW \n");
+                        //printf("SW \n");
                         memory_wr_w(mem, reg[rs1]+immediate, reg[rs2]);
                         break;
                     default:
@@ -150,23 +172,23 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 //printf("Load from address: %d\n", reg[rs1] + immediate); //for debugging
                 switch (funct3){
                     case LB:
-                        printf("LB \n");
+                        //printf("LB \n");
                         reg[rd] = sign_extend(8, memory_rd_b(mem, reg[rs1] + immediate));
                         break;
                     case LH:
-                        printf("LH \n");
+                        //printf("LH \n");
                         reg[rd] = sign_extend(16, memory_rd_h(mem, reg[rs1] + immediate));
                         break;
                     case LW:
-                        printf("LW \n");
+                        //printf("LW \n");
                         reg[rd] = memory_rd_w(mem, reg[rs1] + immediate);
                         break;
                     case LBU: 
-                        printf("LBU \n");
+                        //printf("LBU \n");
                         reg[rd] = (uint32_t)(memory_rd_b(mem, reg[rs1] + immediate) & 0xFF);; // zero extend
                         break;
                     case LHU: 
-                        printf("LHU \n");
+                        //printf("LHU \n");
                         reg[rd] = (uint32_t)(memory_rd_h(mem, reg[rs1] + immediate) & 0xFFFF);; // zero extend
                         break;
                     default:
@@ -187,34 +209,33 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 // 4 * 32-bit instructions == 16 bytes.
                 switch (funct3){
                     case BEQ:
-                        printf("BEQ \n");
+                        //printf("BEQ \n");
                         if (reg[rs1] == reg[rs2]){pc = pc + (immediate); branchinstruct = true;};
                         break;
                     case BNE:
-                        printf("BNE \n");
-                         printf("BNE: reg[rs1]=%d, reg[rs2]=%d\n", reg[rs1], reg[rs2]);
+                        //printf("BNE: reg[rs1]=%d, reg[rs2]=%d\n", reg[rs1], reg[rs2]);
                         if (reg[rs1] != reg[rs2]){ 
                             pc = pc + (immediate); 
                             branchinstruct = true;
                         };
                         break;
                     case BLT:
-                        printf("BLT \n");
+                        //printf("BLT \n");
                         if(reg[rs1] >= reg[rs2]){pc = pc + (immediate); branchinstruct = true;};
                         break;
                     case BGE:
-                        printf("BGE \n");
+                        //printf("BGE \n");
                         if(reg[rs1] <= reg[rs2]){pc = pc + (immediate); branchinstruct = true;};
                         break;
                     case BLTU:
-                        printf("BLTU \n");
+                        //printf("BLTU \n");
                         if((uint32_t)reg[rs1] >= (uint32_t)reg[rs2]){
                             pc = pc + immediate; 
                             branchinstruct = true;
                             };
                         break;
                     case BGEU:
-                        printf("BGEU \n");
+                        //printf("BGEU \n");
                         if((uint32_t)reg[rs1] <= (uint32_t)reg[rs2]){pc = pc + (immediate); branchinstruct = true;};
                         break;
                     default:
@@ -228,35 +249,35 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 if (funct7 == MULDIVREM){
                     switch (funct3){
                         case MUL:
-                            printf("MUL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("MUL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1]*reg[rs2];
                             break;
                         case MULH:
-                            printf("MULH \n");
+                            //printf("MULH \n");
                             reg[rd] = (((long)(long)reg[rs1] * (long)(long)reg[rs2]) >> 32);
                             break;
                         case MULHSU:
-                            printf("MULHSU \n");
+                            //printf("MULHSU \n");
                             reg[rd] = (((unsigned long) (unsigned long)reg[rs1] * (unsigned long)(unsigned long)reg[rs2]) >> 32);
                             break;
                         case MULHU:
-                            printf("MULHU \n");
+                            //printf("MULHU \n");
                             reg[rd] = (long)(((long)(long)reg[rs1] * (long)reg[rs2]) >> 32);
                             break;
                         case DIV:
-                            printf("DIV rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("DIV rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1]/reg[rs2];
                             break;
                         case DIVU:
-                            printf("DIVU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("DIVU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = (uint32_t)reg[rs1]/(uint32_t)reg[rs2];;
                             break;
                         case REM:
-                            printf("REM rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("REM rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1]%reg[rs2];
                             break;
                         case REMU:
-                            printf("REMU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("REMU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = (uint32_t)reg[rs1]%(uint32_t)reg[rs2];;
                             break;
                         default:
@@ -268,12 +289,12 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                         case ADDorSUB:
                             switch (funct7){
                                 case ADD:
-                                    printf("ADD rd=%d, rs1=%d, rs2=%d\n", rd, rs1, rs2);
+                                    //printf("ADD rd=%d, rs1=%d, rs2=%d\n", rd, rs1, rs2);
                                     reg[rd] = reg[rs1] + reg[rs2];
-                                    printf("Updated reg[%d] = %d\n", rd, reg[rd]);
+                                    //printf("Updated reg[%d] = %d\n", rd, reg[rd]);
                                     break;
                                 case SUB:
-                                    printf("sub rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                                    //printf("sub rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                                     reg[rd] = reg[rs1] - reg[rs2];
                                     break;
                                 default:
@@ -281,29 +302,29 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                             }
                             break;
                         case SLL:
-                            printf("SLL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("SLL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1] << reg[rs2];
                             break;
                         case SLT:
-                            printf("SLT rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("SLT rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1] < reg[rs2] ? 1 : 0; 
                             break;
                         case SLTU:
-                            printf("SLTU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("SLTU rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = (uint32_t)reg[rs1] < (uint32_t)reg[rs2] ? 1 : 0; 
                             break;
                         case XOR:
-                            printf("XOR rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("XOR rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1] ^ reg[rs2];
                             break;
                         case SRLA:
                             switch (funct7){
                                 case SRL:
-                                    printf("SRL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                                    //printf("SRL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                                     reg[rd] = reg[rs1] << reg[rs2];
                                     break;
                                 case SRA:
-                                    printf("SRA rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                                    //printf("SRA rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                                     reg[rd] = (int32_t) reg[rs1] >> reg[rs2];
                                     break;
                                 default:
@@ -311,11 +332,11 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                             }
                             break;
                         case OR:
-                            printf("OR rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("OR rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1] | reg[rs2];
                             break;
                         case AND:
-                            printf("AND rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
+                            //printf("AND rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
                             reg[rd] = reg[rs1] & reg[rs2];
                             break;
                         default:
@@ -326,13 +347,11 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
             default:
                 break;
         }
-
         //printf("AFTER REG[0] ::::: %d \n", reg[0]); //for debugging
-        if (numberofinstruction > MAX_INSTRUCTIONS) {
+        /*if (numberofinstruction > MAX_INSTRUCTIONS) {
             fprintf(stderr, "Issieus with infinite loop\n");
             return -1;
-        }
+        }*/
         pc = pc + 4;
     }
-    return;
 }

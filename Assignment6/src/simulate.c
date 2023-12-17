@@ -16,7 +16,7 @@ __int32_t sign_extend(int bit_width, __int32_t value) {
 }
 
 
-
+__int32_t rdd;
 
 long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE *log_file) {
     int reg[32];
@@ -27,8 +27,8 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         instructions = memory_rd_w(mem, pc); 
         if (instructions == NULL){
             printf("Null What are we printing: %x \n", instructions);
-            return;
-        }
+            return reg[20];        
+            }
         __int32_t opcode = instructions & 0x7f; 
         __int32_t funct3 = (instructions >> 12) & 0x7;
         __int32_t funct7 = (instructions >> 25) & 0x7f;
@@ -71,7 +71,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     case SLTIU:
                         // Set less than immediate unsigned
                         printf("SLTIU rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
-                        reg[rd] = (unsigned int)reg[rs1] < (unsigned int)immediate ? 1 
+                        reg[rd] = (__uint32_t)reg[rs1] < (__uint32_t)immediate ? 1 
                         : 0;
                         break;
                     case XORI:
@@ -117,7 +117,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 immediate = (imm11_5 << 5) | imm4_0;
                 printf("rs1: %d \n", rs1);
                 printf("Store: reg[rs1]=%d, immediate=%d, reg[rs2]=%d\n", reg[rs1], immediate, reg[rs2]);
-                printf(" target adress to store %d \n ", reg[rs1] + immediate);
+                printf(" target adress to %d \n ", reg[rs1] + immediate);
                 switch (funct3){
                     case SB:
                         printf("SB \n");
@@ -170,10 +170,10 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 imm11 = (instructions >> 7) & 0x1; // immediate value of 7
                 // Immediate in the correct order. We left shift to make space for the others.
                 immediate = (imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1) ;
-                printf("Before sign extension: %d\n", immediate);
+                printf("Before sign extension: %d (0x%x)\n", immediate, immediate);
 
                 immediate = sign_extend(12, immediate);
-                printf("After sign extension: %d\n", immediate);
+                printf("After sign extension: %d (0x%x)\n", immediate, immediate);
 
                 // In every case we take pc = pc + (immediate * 4) 
                 // 4 * 32-bit instructions == 16 bytes.
@@ -278,11 +278,11 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                             switch (funct7){
                                 case SRL:
                                     printf("SRL rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
-                                    reg[rd] = reg[rs1] << reg[rs2];
+                                    reg[rd] = reg[rs1] >> reg[rs2];
                                     break;
                                 case SRA:
                                     printf("SRA rd=%d, rs1=%d, is2=%d\n", rd, rs1, rs2);
-                                    reg[rd] = reg[rs1] >> reg[rs2];
+                                    reg[rd] = (__int32_t) reg[rs1] >> reg[rs2];
                                     break;
                                 default:
                                     break;
@@ -309,5 +309,4 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         
         pc = pc + 4;
     }
-    return;
 }

@@ -2,21 +2,16 @@
 #include <stdbool.h>
 
 int32_t sign_extend(int bit_width, int32_t value) {
-    int sign_bit = bit_width - 1;
 
     // Check the sign bit
-    if (value & (1 << sign_bit)) {
-        // Perform sign extension by filling with 1s
-        int32_t sign_extension = (int32_t)(-1) << sign_bit;
-        return value | sign_extension;
-    } else {
-        // Positive value, no sign extension needed
-        return value;
-    }
+    if (value & (1 << (bit_width - 1))) { // bit_width - 1 = sign bit whcih we check if negative or positive
+        int32_t sign_extension = (int32_t)(-1) << (bit_width - 1);        // Sign extneding by filling with ones
+        return value | sign_extension; 
+    } else {return value;}        // If the value possitve no need to do anything
 }
 
 
-int32_t MAX_INSTRUCTIONS = 20000; // For debugging
+int32_t MAX_INSTRUCTIONS = 2090; // For debugging
 
 long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE *log_file) {
     int32_t reg[32];
@@ -27,7 +22,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
     while(1){
         instructions = memory_rd_w(mem, pc); 
         if (instructions == 0){
-            printf("Null What are we printing: %x \n", instructions);
+            //printf("Null What are we printing: %x \n", instructions);
             return numberofinstruction;        
             }
         numberofinstruction++;
@@ -42,7 +37,6 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
         int32_t  rs1 = (instructions >> 15) & 0x1F;
         int32_t  rs2 = (instructions >> 20) & 0x1F;
 
-
         switch (opcode){
             case (JAL):
                 imm20 = (instructions >> 31) & 0x1;
@@ -52,7 +46,9 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 immediate = (imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1);
                 immediate = sign_extend(20, immediate);
                 printf("JAL rd=%d, imm=%d\n", rd, immediate);
-                reg[rd] = pc + 4;
+                if (rd != 0){
+                    reg[rd] = pc + 4;
+                }
                 pc = pc + immediate;
                 continue;
             case(LUI):
@@ -67,12 +63,12 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 break;
             case (JALR):
                 immediate = (instructions >> 20) & 0xFFF;
-                printf("Before sign extension: %d (0x%x)\n", immediate, immediate); // debugging
                 immediate = sign_extend(12, immediate);
-                printf("After sign extension: %d (0x%x)\n", immediate, immediate); // debugging
                 printf("JALR rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
-                reg[rd] = pc + 4;
                 int target_address = (reg[rs1] + immediate) & (~1); 
+                if (rd != 0){
+                    reg[rd] = pc + 4;
+                }
                 pc = target_address;
                 continue;
             case (OPIMM):
@@ -84,64 +80,54 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                         printf("Updated reg[%d] = %d\n", rd, reg[rd]);
                         break;
                     case SLLI:
-                        // Shift left logical immediate
                         printf("SLLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] << immediate;
                         break;
                     case SLTI:
-                        // Set less than immediate
                         printf("SLTI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] < immediate ? 1 : 0; 
                         break;
                     case SLTIU:
-                        // Set less than immediate unsigned
                         printf("SLTIU rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = (uint32_t)reg[rs1] < (uint32_t)immediate ? 1 : 0;
                         break;
                     case XORI:
-                        // XOR immediate
                         printf("XORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] ^ immediate;
                         break;
                     case SRI:
                         switch (funct7){
                             case SRLI:
-                                // Shift right logical immediate
                                 printf("SRLI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                                 reg[rd] = reg[rs1] >> immediate;
                                 break;
                             case SRAI:
-                                // Shift right arithmetic immediate
                                 printf("SRAI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
-                                reg[rd] = reg[rs1] >> immediate; // Note: Arithmetic shift right
+                                reg[rd] = reg[rs1] >> immediate; 
                                 break;
                             default:
                                 break;
                         }
                         break;
                     case ORI:
-                        // OR immediate
                         printf("ORI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] | immediate;
                         break;
                     case ANDI:
-                        // AND immediate
                         printf("ANDI rd=%d, rs1=%d, imm=%d\n", rd, rs1, immediate);
                         reg[rd] = reg[rs1] & immediate;
                         break;
                     default:
-                        // Handle unknown funct3 for OPIMM instructions
                         break;
                 }
-
                 break;
             case(STORE):
                 imm11_5 = (instructions >> 25) & 0x7F;
                 imm4_0 = (instructions >> 7) & 0x1F;
                 immediate = (imm11_5 << 5) | imm4_0;
-                printf("rs1: %d \n", rs1);
+                //printf("rs1: %d \n", rs1); //for debugging
                 printf("Store: reg[rs1]=%d, immediate=%d, reg[rs2]=%d\n", reg[rs1], immediate, reg[rs2]);
-                printf(" target adress to store %d \n ", reg[rs1] + immediate);
+                //printf(" target adress to store %d \n ", reg[rs1] + immediate); //for debugging
                 switch (funct3){
                     case SB:
                         printf("SB \n");
@@ -161,8 +147,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 break;
             case(LOAD):
                 immediate = (instructions >> 20) & 0xFFF;
-                printf("Load from address: %d\n", reg[rs1] + immediate);
-
+                //printf("Load from address: %d\n", reg[rs1] + immediate); //for debugging
                 switch (funct3){
                     case LB:
                         printf("LB \n");
@@ -195,11 +180,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 imm11 = (instructions >> 7) & 0x1; // immediate value of 7
                 // Immediate in the correct order. We left shift to make space for the others.
                 immediate = (imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1) ;
-                printf("Before sign extension: %d\n", immediate);
-
-                immediate = sign_extend(12, immediate);
-                printf("After sign extension: %d\n", immediate);
-
+                immediate = sign_extend(12, immediate); // sign extendend
                 // Bool to whether skip the pc + 4 in the end , then we continue to next iteration
                 bool branchinstruct = false;
                 // In every case we take pc = pc + (immediate * 4) 
@@ -212,7 +193,7 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                     case BNE:
                         printf("BNE \n");
                          printf("BNE: reg[rs1]=%d, reg[rs2]=%d\n", reg[rs1], reg[rs2]);
-                        if (reg[rs1] != reg[rs2]){
+                        if (reg[rs1] != reg[rs2]){ 
                             pc = pc + (immediate); 
                             branchinstruct = true;
                         };
@@ -346,11 +327,11 @@ long int simulate(struct memory *mem, struct assembly *as, int start_addr, FILE 
                 break;
         }
 
+        //printf("AFTER REG[0] ::::: %d \n", reg[0]); //for debugging
         if (numberofinstruction > MAX_INSTRUCTIONS) {
             fprintf(stderr, "Issieus with infinite loop\n");
             return -1;
         }
-        //printf("Opcode value at address %x: %x\n", pc, opcode);
         pc = pc + 4;
     }
     return;

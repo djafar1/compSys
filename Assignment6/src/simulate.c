@@ -2,7 +2,6 @@
 #include <stdbool.h>
 
 int32_t sign_extend(int bit_width, int32_t value) {
-
     // Check the sign bit
     if (value & (1 << (bit_width - 1))) { // bit_width - 1 = sign bit whcih we check if negative or positive
         int32_t sign_extension = (int32_t)(-1) << (bit_width - 1);        // Sign extneding by filling with ones

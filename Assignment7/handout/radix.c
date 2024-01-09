@@ -95,11 +95,11 @@ int* take_numbers_2(struct node** parent, int* buffer, int* end) {
     if (nptr->bit_pos == 1) {
       // it's a leaf node. Take numbers.
       while (buffer < end && nptr->leaf.count_zero) {
-        *buffer++ = nptr->number & ~1; // WE CAN REMOVE THESE BIT OPERATION BECAUSE IT just ensures something that is already ensured.
+        *buffer++ = nptr->number & ~1;
         nptr->leaf.count_zero--;
       }
       while (buffer < end && nptr->leaf.count_one) {
-        *buffer++ = nptr->number | 1; // WE CAN REMOVE THESE BIT OPERATION BECAUSE IT just ensures something that is already ensured.
+        *buffer++ = nptr->number | 1; 
         nptr->leaf.count_one--;
       }
       // if the leaf node is now "empty" it must be remove:

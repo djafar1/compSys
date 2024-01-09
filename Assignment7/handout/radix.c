@@ -95,11 +95,11 @@ int* take_numbers_2(struct node** parent, int* buffer, int* end) {
     if (nptr->bit_pos == 1) {
       // it's a leaf node. Take numbers.
       while (buffer < end && nptr->leaf.count_zero) {
-        *buffer++ = nptr->number & ~1;
+        *buffer++ = nptr->number & ~1; // WE CAN REMOVE THESE BIT OPERATION BECAUSE IT just ensures something that is already ensured.
         nptr->leaf.count_zero--;
       }
       while (buffer < end && nptr->leaf.count_one) {
-        *buffer++ = nptr->number | 1;
+        *buffer++ = nptr->number | 1; // WE CAN REMOVE THESE BIT OPERATION BECAUSE IT just ensures something that is already ensured.
         nptr->leaf.count_one--;
       }
       // if the leaf node is now "empty" it must be remove:
@@ -154,10 +154,10 @@ void main(int argc, char* argv[]) {
   }
   // process numbers
   while (1) {
-    int numbers[100];
-    int out_numbers[100];
+    int numbers[200]; // Change from 100 to 200
+    int out_numbers[200]; // Change from 100 to 200
     // read numbers until we don't get more
-    int read = read_int_buffer(in_file, numbers, 100);
+    int read = read_int_buffer(in_file, numbers, 200); // Change from 100 to 200
     if (read <= 0) break;
     // process numbers read, one at a time
     for (int n = 0; n < read; ++n) {
@@ -166,7 +166,7 @@ void main(int argc, char* argv[]) {
         int limit = -numbers[n];
         while (limit > 0) {
           // take, then output up till 100 numbers at a time
-          int take_max = limit < 100 ? limit : 100;
+          int take_max = limit < 200 ? limit : 200; // Change from 100 to 200
           int taken = take_numbers(out_numbers, take_max);
           int to_write = taken;
           // output numbers:
@@ -189,4 +189,3 @@ void main(int argc, char* argv[]) {
   close_file(out_file);
   release_tree(tree);
 }
-

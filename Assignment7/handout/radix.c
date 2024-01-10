@@ -8,7 +8,6 @@ struct interior { struct node* zero; struct node* one; };
 struct node {
   int bit_pos;
   int number;
-  bool is_leaf;
   union { struct leaf leaf; struct interior interior; };
 };
 

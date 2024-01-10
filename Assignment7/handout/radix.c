@@ -1,5 +1,4 @@
 #include "lib.h"
-#include <stdbool.h>
 
 // Nodes in a radix tree.
 struct node;
@@ -91,32 +90,35 @@ void add_number(int number) {
 // Take out members of subtree. Fill into 'buffer' until we reach 'end' of it
 int* take_numbers_2(struct node** parent, int* buffer, int* end) {
   struct node* nptr = *parent;
-  if (nptr) {
-    // we have a node:
-    if (nptr->bit_pos == 1) {
-      // it's a leaf node. Take numbers.
-      while (buffer < end && nptr->leaf.count_zero) {
-        *buffer++ = nptr->number & ~1;
-        nptr->leaf.count_zero--;
-      }
-      while (buffer < end && nptr->leaf.count_one) {
-        *buffer++ = nptr->number | 1; 
-        nptr->leaf.count_one--;
-      }
-      // if the leaf node is now "empty" it must be remove:
-      if (nptr->leaf.count_zero == 0 && nptr->leaf.count_one == 0) {
-        release(nptr);
-        *parent = NULL;
-      }
-    } else {
-      // it's an interior node. Take from subtrees:
-      buffer = take_numbers_2(& nptr->interior.zero, buffer, end);
-      buffer = take_numbers_2(& nptr->interior.one, buffer, end);
-      // if both subtrees have been removed, remove this node as well
-      if (nptr->interior.zero == NULL && nptr->interior.one == NULL) {
-        release(nptr);
-        *parent = NULL;
-      }
+  if (!nptr || buffer >= end) { // Check whether the node is NULL or the buffer has reached the end. Then we return since we reached "end" of it.
+    return buffer; 
+  } 
+  // Instead of checking for nptr is not null, we check earlier if it is null and buffer is at the end and then we just terminate by returning the buffer.
+
+  // we have a node:
+  if (nptr->bit_pos == 1) {
+    // it's a leaf node. Take numbers.
+    while (buffer < end && nptr->leaf.count_zero) {
+      *buffer++ = nptr->number & ~1;
+      nptr->leaf.count_zero--;
+    }
+    while (buffer < end && nptr->leaf.count_one) {
+      *buffer++ = nptr->number | 1; 
+      nptr->leaf.count_one--;
+    }
+    // if the leaf node is now "empty" it must be remove:
+    if (nptr->leaf.count_zero == 0 && nptr->leaf.count_one == 0) {
+      release(nptr);
+      *parent = NULL;
+    }
+  } else {
+    // it's an interior node. Take from subtrees:
+    buffer = take_numbers_2(& nptr->interior.zero, buffer, end);
+    buffer = take_numbers_2(& nptr->interior.one, buffer, end);
+    // if both subtrees have been removed, remove this node as well
+    if (nptr->interior.zero == NULL && nptr->interior.one == NULL) {
+      release(nptr);
+      *parent = NULL;
     }
   }
   return buffer;

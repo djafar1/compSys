@@ -41,7 +41,6 @@ void add_number(int number) {
       *parent = nptr;
       nptr->bit_pos = 1;
       nptr->number = number;
-      nptr->is_leaf = true;
       nptr->leaf.count_zero = (number & 1) == 0;
       nptr->leaf.count_one = (number & 1) == 1;
       return;
@@ -59,7 +58,6 @@ void add_number(int number) {
         *parent = nptr2;
         nptr2->bit_pos = bit_pos;
         nptr2->number = number;
-        nptr2->is_leaf = false;
         if ((number & bit_pos) == 0) {
           nptr2->interior.one = nptr;
           nptr2->interior.zero = NULL;
@@ -96,7 +94,7 @@ int* take_numbers_2(struct node** parent, int* buffer, int* end) {
   struct node* nptr = *parent;
   if (nptr) {
     // we have a node:
-    if (nptr->is_leaf) {
+    if (nptr->bit_pos == 1) {
       // it's a leaf node. Take numbers.
       while (buffer < end && nptr->leaf.count_zero) {
         *buffer++ = nptr->number & ~1;
